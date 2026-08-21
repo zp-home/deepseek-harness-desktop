@@ -692,6 +692,15 @@ const css = `
   border-radius: 50%;
 }
 
+/* The renderer keeps slot anchors layout-neutral with an inline display value.
+   Promote this list anchor so every footer plugin gets its own stable row. */
+[data-slot='sidebar.footer.action'] {
+  display: flex !important;
+  flex-direction: column;
+  min-width: 0;
+  width: 100%;
+}
+
 .dshMarketOverlay {
   position: fixed;
   inset: 0;

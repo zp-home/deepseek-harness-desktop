@@ -122,6 +122,16 @@ describe('community market browser plugin', () => {
     expect(styles).toMatch(/\.dshMarketStatusModal\s*\{[^}]*width: min\(480px, calc\(100vw - 48px\)\)/su)
     expect(styles).toMatch(/\.dshMarketOverlayPanel\s*\{[^}]*width: min\(800px, 100%\);[^}]*height: min\(700px, 100%\)/su)
     expect(styles).toMatch(/@media \(max-width: 680px\)[\s\S]*\.dshMarketOverlayPanel\s*\{[^}]*width: 100%;[^}]*height: 100%/u)
+    expect(styles).toMatch(
+      /\[data-slot='sidebar\.footer\.action'\]\s*\{[^}]*display: flex !important;[^}]*flex-direction: column;[^}]*width: 100%/su,
+    )
+    const footerSlot = document.createElement('div')
+    footerSlot.dataset.slot = 'sidebar.footer.action'
+    footerSlot.style.display = 'contents'
+    document.body.append(footerSlot)
+    expect(getComputedStyle(footerSlot).display).toBe('flex')
+    expect(getComputedStyle(footerSlot).flexDirection).toBe('column')
+    footerSlot.remove()
 
     b.dispose()
   })
