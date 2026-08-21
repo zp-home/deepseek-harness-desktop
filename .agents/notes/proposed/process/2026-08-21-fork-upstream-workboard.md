@@ -7,9 +7,9 @@ the open work reported against `anywhere-labs/deepseek-harness-desktop` without
 granting blanket approval to upstream Issues or pull requests.
 
 Snapshot: 2026-08-21, official `master` at `7ff6c98bc561d424fa8d2b65f8c3ba840f37f566`.
-The snapshot contains 101 open Issues and 39 open pull requests. Fork `master`
-is 34 commits ahead and 0 behind after Profile recovery PR #13 and the
-`0.1.1-rc.1` runtime upgrade PR #14 were merged.
+The snapshot contains 102 open Issues and 40 open pull requests. Fork `master`
+is 36 commits ahead and 0 behind after the `0.1.1-rc.1` runtime upgrade PR #14
+and its workboard finalization PR #15 were merged.
 
 ## Decision policy
 
@@ -52,11 +52,25 @@ The upgrade retains the fork's download integrity, Profile lifecycle and
 recovery, Windows directory filtering, macOS recovery, prompt history,
 response-language, trajectory localization, and node-pty packaging fixes.
 
+The version boundary was revalidated after the merge. The official DSH
+`master`, newest Git tag, GitHub prerelease, and npm `next` package family all
+still resolve to `0.1.1-rc.1` at `528c682e061696f5a160f363f236ecbf53cbd006`.
+There is no newer coherent core release to adapt and no duplicate runtime
+upgrade should be created.
+
+Compared with rc8, the accepted DSH release adds the
+`DeepSeek-V4-Flash-Vision-Exp` model, closes the Bubblewrap
+`/proc/<pid>/root` escape path, fixes composer layout when editing before an
+`@` reference, and improves Markdown tables, 99.x% cache-hit precision,
+subagent header navigation, and multiline `ask_user_question` answers. These
+are upstream runtime behaviors; the fork did not add a separate model-request
+or message-semantics customization to obtain them.
+
 ## Todo
 
 ### Completed
 
-- Synced the latest official Desktop `master`; fork is 20 commits ahead and 0
+- Synced the latest official Desktop `master`; fork is 36 commits ahead and 0
   behind the official commit in this snapshot.
 - Migrated the pinned DeepSeek Harness checkout to rc8 commit
   `141eb6fef83422698aef7a981029e843e8161534`.
@@ -81,6 +95,10 @@ response-language, trajectory localization, and node-pty packaging fixes.
   Locally, immutable install, type checking, 96 focused tests, 701 full-suite
   tests, 183 package tests, and the 201-node runtime closure passed. Six
   symlink tests could not run because this host denies symlink creation.
+- Revalidated the source tag, GitHub release, npm `next` dist-tag, package
+  family, fork branch, and official Desktop branch after PR #14. The fork is
+  already on the newest coherent DSH release, so no duplicate core change is
+  required.
 - Disabled pushes to the official repository through the `upstream` remote.
 
 ### In progress
@@ -92,6 +110,9 @@ response-language, trajectory localization, and node-pty packaging fixes.
 
 - Audit Issue #449 as two decisions: plugin descriptions are a useful UX
   candidate; adding catalog sources still requires supply-chain ownership review.
+- Audit Issue #450 as a Desktop-owned navigation layout change: preserve a
+  stable Market entry while allowing multiple lower-sidebar plugins to stack or
+  collapse without overlap. This does not require an Agent-core fork.
 - Evaluate PR #266 for the Windows restricted sandbox only after measuring its
   packaged-size cost and running a real Windows shell probe matrix.
 - Consolidate duplicate plugin-install and Linux-packaging reports before
@@ -119,6 +140,7 @@ response-language, trajectory localization, and node-pty packaging fixes.
 | 401 | completed | The initial rc8 milestone shipped; Issue #448 now supersedes that runtime target. |
 | 448 | completed | The coherent runtime/package family shipped through fork PR #14. Separate core self-update remains a later architecture decision. |
 | 449 | pending-review | Descriptions are a positive UX candidate; extra catalogs require a separate trust and maintenance decision. |
+| 450 | next-audit | The lower-sidebar collision is a positive Desktop UI issue; adapt it only with bounded layout behavior and multi-plugin tests. |
 | 441 | completed | Covered by fork PR #5. |
 | 427 | completed | Covered by the corrected fork PR #7. |
 | 439, 305 | future-validation | Restricted Windows sandbox needs the binary-size and shell probe gate above. |
@@ -142,6 +164,7 @@ All other open Issues remain `pending-review`:
 | PR | Status | Decision |
 | ---: | --- | --- |
 | 428 | already-covered | Fork PR #7 implements the valid lifecycle-safe subset. |
+| 451 | already-covered | Fork PR #5 already localizes these rc.1 trajectory and Thinking labels. Do not duplicate the patch while official CI is failing; reassess replacement only after upstream merges. |
 | 121 | completed | Adapted with exact declared/delivered byte matching in fork PR #8. |
 | 122 | completed | Adapted with initial and retry disposal-path tests in fork PR #10. |
 | 209 | completed | Selectable-profile recovery shipped in fork PR #13; unrelated SIGTERM work was excluded. |
@@ -164,7 +187,7 @@ All other open pull requests remain `pending-review`:
 - `next-audit`: next bounded candidate for detailed review.
 - `future-adapt`: useful scope identified, implementation intentionally queued.
 - `future-validation`: blocked on evidence, not on coding effort.
-- `deferred-core`: avoided because it creates long-term rc8/core coupling.
+- `deferred-core`: avoided because it creates long-term upstream-core coupling.
 - `deferred-supply-chain`: needs explicit trust and ownership review.
 - `consolidate`: overlaps competing reports or implementations.
 - `rejected`: conflicts with security or product boundary policy.
