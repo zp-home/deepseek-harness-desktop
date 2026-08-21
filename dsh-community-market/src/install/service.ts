@@ -27,7 +27,7 @@ const MAX_PACKAGE_MANAGER_ERROR_CHARS = 512
 const MAX_PACKAGE_MANAGER_STDERR_CHARS = MAX_PACKAGE_MANAGER_ERROR_CHARS * 8
 const LIFECYCLE_SCRIPTS = ['preinstall', 'install', 'postinstall', 'prepare'] as const
 const BLOCKED_PRODUCT_PACKAGES = new Set(['dsh-plugin-desktop', 'dsh-community-market'])
-const DSH_RUNTIME_VERSION = '0.1.0-rc.8'
+const DSH_RUNTIME_VERSION = '0.1.1-rc.1'
 const CORDIS_RUNTIME_VERSION = '4.0.1'
 const NODE_RUNTIME_VERSION = '24.18.1'
 
