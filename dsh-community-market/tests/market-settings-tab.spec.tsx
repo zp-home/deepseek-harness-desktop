@@ -51,6 +51,10 @@ const props = { initialView: 'discover', t, readLocale: () => 'en' } as MarketSe
 const desktopActions = { openTerminal: true, requestRestart: true } as const
 const emptyState: MarketStateResponse = { sources: [], builtIns: [], desktopActions }
 
+function marketApiError(message: string, status = 502, code = 'operation-failed'): Error {
+  return Object.assign(new Error(message), { name: 'MarketApiError', status, code })
+}
+
 function expectMarketModal(dialog: HTMLElement, sizeClass: string): void {
   expect(dialog.classList.contains('dshMarketModal')).toBe(true)
   expect(dialog.classList.contains(sizeClass)).toBe(true)
@@ -612,7 +616,10 @@ describe('MarketSettingsTab', () => {
       previewId: 'opaque-retry-install-preview',
     })
     vi.mocked(executeMarketOperation)
-      .mockRejectedValueOnce(new Error('install failed'))
+      .mockRejectedValueOnce(marketApiError(
+        'The package manager failed after changing the active profile, so the partial installation was rolled back.',
+      ))
+      .mockRejectedValueOnce(new Error('private renderer failure'))
       .mockResolvedValueOnce({
         action: 'install',
         receipt,
@@ -629,12 +636,20 @@ describe('MarketSettingsTab', () => {
       'opaque-retry-install-preview',
       expect.any(AbortSignal),
     ))
-    expect((await screen.findByRole('alert')).textContent).toContain(en.executeError)
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'The package manager failed after changing the active profile, so the partial installation was rolled back.',
+    )
     expect(within(screen.getByRole('dialog', { name: en.confirmInstallTitle }))
       .getByRole('button', { name: en.confirmInstall })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: en.confirmInstall }))
     await waitFor(() => expect(executeMarketOperation).toHaveBeenCalledTimes(2))
+    const fallback = await screen.findByRole('alert')
+    expect(fallback.textContent).toContain(en.executeError)
+    expect(fallback.textContent).not.toContain('private renderer failure')
+
+    fireEvent.click(screen.getByRole('button', { name: en.confirmInstall }))
+    await waitFor(() => expect(executeMarketOperation).toHaveBeenCalledTimes(3))
     expect(await screen.findByRole('dialog', { name: en.installComplete })).toBeTruthy()
   })
 
@@ -690,20 +705,26 @@ describe('MarketSettingsTab', () => {
     vi.mocked(readMarketCatalog).mockResolvedValue(catalogForSource(firstSource, [item]))
     vi.mocked(readMarketInstallable).mockResolvedValue(installableResponse([item]))
     vi.mocked(readMarketInstallations).mockResolvedValue({ installations: [] })
-    vi.mocked(previewMarketOperation).mockRejectedValue(new Error('not a standard plugin'))
+    vi.mocked(previewMarketOperation)
+      .mockRejectedValueOnce(marketApiError('not a standard plugin', 422, 'verification-failed'))
+      .mockRejectedValueOnce(new Error('private preview failure'))
     render(<MarketSettingsTab {...props} />)
 
     await screen.findByRole('button', { name: /Installable Plugin/u })
     fireEvent.click(screen.getByRole('button', { name: en.installable }))
     fireEvent.click(await screen.findByRole('button', { name: `${en.install}: ${item.displayName}` }))
 
-    expect(await screen.findByText(en.previewError)).toBeTruthy()
+    expect(await screen.findByText('not a standard plugin')).toBeTruthy()
     const details = screen.getByRole('link', { name: en.verificationDetails }) as HTMLAnchorElement
     expect(details.href).toBe(
       'https://github.com/anywhere-labs/deepseek-harness-desktop/blob/master/dsh-community-market/docs/install-and-uninstall.md',
     )
     expect(details.target).toBe('_blank')
     expect(details.rel).toContain('noopener')
+
+    fireEvent.click(screen.getByRole('button', { name: `${en.install}: ${item.displayName}` }))
+    expect(await screen.findByText(en.previewError)).toBeTruthy()
+    expect(screen.queryByText('private preview failure')).toBeNull()
   })
 
   it('opens an exact managed catalog item with local controls without issuing an install preview', async () => {

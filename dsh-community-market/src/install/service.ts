@@ -23,6 +23,8 @@ const CANDIDATE_TTL_MS = 30 * 60 * 1000
 const MAX_INTENTS = 256
 const MAX_CANDIDATES = 10_000
 const MAX_RECEIPTS = 512
+const MAX_PACKAGE_MANAGER_ERROR_CHARS = 512
+const MAX_PACKAGE_MANAGER_STDERR_CHARS = MAX_PACKAGE_MANAGER_ERROR_CHARS * 8
 const LIFECYCLE_SCRIPTS = ['preinstall', 'install', 'postinstall', 'prepare'] as const
 const BLOCKED_PRODUCT_PACKAGES = new Set(['dsh-plugin-desktop', 'dsh-community-market'])
 const DSH_RUNTIME_VERSION = '0.1.0-rc.8'
@@ -200,6 +202,43 @@ function opaqueToken(): string {
 
 function own(object: object, key: PropertyKey): boolean {
   return Object.prototype.hasOwnProperty.call(object, key)
+}
+
+function sanitizePackageManagerDiagnostic(value: string): string | undefined {
+  const lines = value
+    .split(/\r?\n/u)
+    .map(line => line
+      .replace(/\u001B\[[0-?]*[ -/]*[@-~]/gu, '')
+      .replace(/[\u0000-\u001f\u007f-\u009f]/gu, ' ')
+      .trim())
+  const detail = lines.findLast(line => /\bERR_PNPM_[A-Z0-9_]+\b/u.test(line))
+  const errorStart = detail?.search(/\bERR_PNPM_[A-Z0-9_]+\b/u) ?? -1
+  if (detail === undefined || errorStart < 0) return undefined
+  return detail
+    .slice(errorStart)
+    .replace(/(https?:\/\/)(?:[^@\s/]+@)?([^?\s#]+)(?:\?[^\s#]*)?(?:#[^\s]*)?/giu, '$1$2')
+    .replace(/\b(?:npm|ghp|github_pat)_[A-Za-z0-9_]{10,}\b/gu, '[redacted token]')
+    .replace(/\b(Bearer|Basic)\s+\S+/giu, '$1 [redacted]')
+    .replace(/\b((?:auth(?:entication|orization)?|password|secret|token)\s*[=:]\s*)\S+/giu, '$1[redacted]')
+    .replace(/\s+/gu, ' ')
+    .trim()
+    .slice(0, MAX_PACKAGE_MANAGER_ERROR_CHARS)
+}
+
+function capturePackageManagerError(stream: Readable): () => string | undefined {
+  let tail = ''
+  stream.setEncoding('utf8')
+  stream.on('data', (chunk: string) => {
+    tail = `${tail}${chunk}`.slice(-MAX_PACKAGE_MANAGER_STDERR_CHARS)
+  })
+  return () => sanitizePackageManagerDiagnostic(tail)
+}
+
+function packageManagerFailure(message: string, detail: string | undefined): MarketInstallError {
+  return new MarketInstallError(
+    'operation-failed',
+    detail === undefined ? message : `${message} pnpm reported: ${detail}`,
+  )
 }
 
 function sha512Integrity(value: unknown): value is string {
@@ -863,6 +902,12 @@ export class MarketInstallService {
       } catch (cause) {
         if (!await this.installMayHaveMutatedProfile(profile, candidate.packageName)) throw cause
         await this.rollbackInstall(profile, candidate.packageName, receipt.receiptId)
+        if (cause instanceof MarketInstallError && cause.code === 'operation-failed') {
+          throw new MarketInstallError(
+            'operation-failed',
+            `${cause.message} The partial installation was rolled back.`,
+          )
+        }
         throw new MarketInstallError(
           'operation-failed',
           'The package manager failed after changing the active profile, so the partial installation was rolled back.',
@@ -1171,6 +1216,7 @@ export class MarketInstallService {
     }
     catch { throw new MarketInstallError('operation-failed', 'The desktop package manager could not start.') }
     handle.stdout.resume()
+    const readPackageManagerError = capturePackageManagerError(handle.stderr)
     handle.stderr.resume()
     const cancel = () => handle.cancel()
     combinedSignal.addEventListener('abort', cancel, { once: true })
@@ -1178,12 +1224,15 @@ export class MarketInstallService {
     try { outcome = await handle.done }
     catch {
       combinedSignal.throwIfAborted()
-      throw new MarketInstallError('operation-failed', 'The desktop package manager failed.')
+      throw packageManagerFailure('The desktop package manager failed.', readPackageManagerError())
     }
     finally { combinedSignal.removeEventListener('abort', cancel) }
     combinedSignal.throwIfAborted()
     if (outcome.exitCode !== 0 || outcome.signal !== null) {
-      throw new MarketInstallError('operation-failed', 'The desktop package manager did not complete successfully.')
+      throw packageManagerFailure(
+        'The desktop package manager did not complete successfully.',
+        readPackageManagerError(),
+      )
     }
   }
 
