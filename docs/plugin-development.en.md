@@ -72,23 +72,33 @@ When the same package must also run under ordinary `dsh web`, do not put Desktop
 export const inject = ['webServer', 'loader']
 
 export function apply(ctx: Context, config: { profile?: string }): void {
-  const profiles = ctx.get('desktopProfiles')
-  if (profiles === undefined) {
+  if (ctx.get('desktopProfiles') === undefined) {
     mountOrdinaryDshManager(ctx, config.profile ?? 'web')
     return
   }
 
-  ctx.inject(['desktopPnpm'], (desktopPnpm) => {
-    mountManager(ctx, {
-      profile: profiles.current.name,
-      profileDir: profiles.current.dir,
-      runPlugin: (args, cwd, signal) => desktopPnpm.runPlugin(args, cwd, signal),
+  ctx.inject(['desktopProfiles', 'desktopPnpm'], (desktopCtx) => {
+    const current = desktopCtx.desktopProfiles.current
+    mountManager(desktopCtx, {
+      profile: current.name,
+      profileDir: current.dir,
+      runPlugin: (args, cwd, signal) => desktopCtx.desktopPnpm.runPlugin(args, cwd, signal),
     })
   })
 }
 ```
 
 The ordinary DSH fallback remains the plugin's authoritative implementation. Do not infer the Desktop profile from `process.argv`, `ctx.baseUrl`, settings, or `$DSH_HOME`; in Desktop, use `desktopProfiles.current`.
+
+## Isolated development-sandbox mirrors
+
+An external development-sandbox plugin can use this cross-environment pattern to test a local plugin checkout without changing the active Desktop profile. Its target is an isolated DSH Web mirror, not a second Electron process.
+
+Retain both `desktopProfiles` and `desktopPnpm` in the nested `ctx.inject()` dependency set. Build a `host-web` mirror from the immutable `desktopCtx.desktopProfiles.current.dir` for that Host generation; do not assume `profiles/web`, and do not retain the profile, runner, or effects after the scoped `desktopCtx` is disposed.
+
+A user-requested build may use the low-level `desktopCtx.desktopPnpm.run(['--dir', absolutePluginDir, 'run', 'build'], signal)` because it builds a local checkout and does not mutate the active profile. Give it a deadline, drain both output streams, retain the returned handle, and on disposal call `cancel()` and await `done`. A nonzero exit, signal termination, or rejected `done` must stop the mirror from launching.
+
+A reference implementation is [`dsh-dev-sandbox`](https://github.com/zp-home/dsh-dev-sandbox).
 
 ## `run()`, `runPlugin()`, and `installPlugin()`
 

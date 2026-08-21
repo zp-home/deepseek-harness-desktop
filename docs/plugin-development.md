@@ -72,23 +72,33 @@ export function apply(ctx: Context): void {
 export const inject = ['webServer', 'loader']
 
 export function apply(ctx: Context, config: { profile?: string }): void {
-  const profiles = ctx.get('desktopProfiles')
-  if (profiles === undefined) {
+  if (ctx.get('desktopProfiles') === undefined) {
     mountOrdinaryDshManager(ctx, config.profile ?? 'web')
     return
   }
 
-  ctx.inject(['desktopPnpm'], (desktopPnpm) => {
-    mountManager(ctx, {
-      profile: profiles.current.name,
-      profileDir: profiles.current.dir,
-      runPlugin: (args, cwd, signal) => desktopPnpm.runPlugin(args, cwd, signal),
+  ctx.inject(['desktopProfiles', 'desktopPnpm'], (desktopCtx) => {
+    const current = desktopCtx.desktopProfiles.current
+    mountManager(desktopCtx, {
+      profile: current.name,
+      profileDir: current.dir,
+      runPlugin: (args, cwd, signal) => desktopCtx.desktopPnpm.runPlugin(args, cwd, signal),
     })
   })
 }
 ```
 
 普通 DSH 的 fallback 仍然是插件自己的权威实现。不要从 `process.argv`、`ctx.baseUrl`、settings 或 `$DSH_HOME` 推断 Desktop profile；在 Desktop 中以 `desktopProfiles.current` 为准。
+
+## 隔离开发沙盒镜像
+
+外部开发沙盒插件可以使用这种跨环境模式，在不修改活动 Desktop profile 的情况下测试本地插件检出。它的目标是隔离的 DSH Web 镜像，而不是第二个 Electron 进程。
+
+嵌套的 `ctx.inject()` 依赖集合必须同时保留 `desktopProfiles` 和 `desktopPnpm`。`host-web` 镜像应以当前 Host generation 中不可变的 `desktopCtx.desktopProfiles.current.dir` 为来源；不要假设为 `profiles/web`，也不要在 scoped `desktopCtx` dispose 后保留 profile、runner 或 effect。
+
+由用户明确请求的构建可以使用低层 `desktopCtx.desktopPnpm.run(['--dir', absolutePluginDir, 'run', 'build'], signal)`，因为它构建的是本地检出，不会修改活动 profile。必须提供 deadline，读取两个输出流，保留返回的 handle，并在 dispose 时调用 `cancel()` 后等待 `done`。非零退出码、信号终止或被拒绝的 `done` 都必须阻止镜像继续启动。
+
+参考实现见 [`dsh-dev-sandbox`](https://github.com/zp-home/dsh-dev-sandbox)。
 
 ## `run()`、`runPlugin()` 和 `installPlugin()` 的区别
 
