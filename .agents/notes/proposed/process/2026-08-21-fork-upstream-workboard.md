@@ -6,9 +6,10 @@ This is the decision ledger for `zp-home/deepseek-harness-desktop`. It tracks
 the open work reported against `anywhere-labs/deepseek-harness-desktop` without
 granting blanket approval to upstream Issues or pull requests.
 
-Snapshot: 2026-08-21, official `master` at `8dbb94428e17dd99eb9ed66ea6e6885968fd5dd1`.
-The snapshot contains 103 open Issues and 38 open pull requests. Fork `master`
-contains this official commit and remains 0 behind after fork PR #21 was merged.
+Snapshot: 2026-08-21, official `master` at `90909c26d46ed0ab70413c855f50b04086d4dcc8`.
+The snapshot contains 105 open Issues and 38 open pull requests. Fork `master`
+contains this official commit and remains 0 behind and 58 commits ahead after
+fork PR #25 was merged.
 
 ## Decision policy
 
@@ -96,11 +97,17 @@ Official PR #451 is now integrated upstream. The fork keeps its existing
 component-prop trajectory translation because it avoids module-level mutable
 translation state while covering the same Chinese labels.
 
+Official PR #456 is also integrated through fork PRs #23 and #25. Its valid
+Market smoke capability and macOS `pathToFileURL` coverage were already present
+in the fork. The fork deliberately retains its stronger Windows checkpoint
+representation: manifests omit POSIX modes that Windows cannot verify while
+type, symlink, size, hash, bounded-file, and fail-closed recovery checks remain.
+
 ## Todo
 
 ### Completed
 
-- Synced the latest official Desktop `master`; fork is 36 commits ahead and 0
+- Synced the latest official Desktop `master`; fork is 58 commits ahead and 0
   behind the official commit in this snapshot.
 - Migrated the pinned DeepSeek Harness checkout to rc8 commit
   `141eb6fef83422698aef7a981029e843e8161534`.
@@ -159,6 +166,25 @@ translation state while covering the same Chinese labels.
 - Kept the update trust boundary narrow: draft, prerelease, malformed, stale,
   renderer-supplied, ModelScope, and mutable-mirror candidates are rejected;
   exact byte counts and PE/DMG formats remain validated before installation.
+- Merged fork PR #23 at `e8014545ff` after all five CI jobs passed. It adapts
+  the remaining valid Market smoke capability from official PR #456 without
+  replacing the fork's stricter cross-platform Profile checkpoint model.
+- Merged fork PR #24 at `c121b83914` after all five CI jobs passed. It resolves
+  Issue #455 by appending exact native paths for bounded, user-dropped ordinary
+  files to the composer draft. It does not upload, copy, scan user folders,
+  invoke Spotlight, guess paths, auto-send, or take ownership from image/folder
+  drop handlers.
+- Merged fork PR #25 at `c001c94c27` after all five CI jobs passed. It records
+  official `90909c26d4` ancestry with a result tree identical to the already
+  reviewed fork tree, restoring 0-behind status.
+- Issue #457 is covered by the coherent `0.1.1-rc.1` runtime/package family in
+  fork PR #14. Desktop and Web now share the versioned numeric `version: 1`
+  credentials document and its `refs:` mapping; no Desktop-private credential
+  parser or provider-protocol fork was added.
+- Issue #297 and official PR #440 are already covered more completely by the
+  fork's Windows directory-picker adapter. It probes actual enterability with
+  bounded `opendir` concurrency, preserves order, propagates cancellation, and
+  closes directory handles that arrive after cancellation.
 
 ### In progress
 
@@ -179,6 +205,9 @@ translation state while covering the same Chinese labels.
 - Define a fork-owned release channel and artifact-integrity policy before
   `zp-home` publishes binaries or changes the updater away from official
   `anywhere-labs` releases.
+- Adapt Issue #133 / PR #211 by asking the running app to shut down through its
+  single-instance lifecycle, then delegating to electron-builder's existing
+  install-directory/current-user process checks and bounded fallback.
 - Consider Issue #453 as a settings UI-only search and clear-selection change,
   without changing provider discovery or model request semantics.
 - Consolidate duplicate plugin-install and Linux-packaging reports before
@@ -201,6 +230,9 @@ translation state while covering the same Chinese labels.
 - Do not accept PR #445 as written. Reporting a provider's truncated 300-item
   response as a complete catalog silently corrupts search, categories, and
   install visibility. A later adaptation needs explicit partial-catalog state.
+- Do not accept PR #211 as written. Its unconditional image-name
+  `taskkill /F /T` can terminate an unrelated Portable instance and discards
+  electron-builder's installation-directory and current-user scoping.
 - Do not merge PR #278 wholesale. Manual exact-version discovery, lifecycle
   script suppression, cursor validation, and receipt rollback can be audited
   separately; automatic startup installation of future code needs a distinct
@@ -219,6 +251,10 @@ translation state while covering the same Chinese labels.
 | 448 | completed | The coherent runtime/package family shipped through fork PR #14. Separate core self-update remains a later architecture decision. |
 | 449 | completed | The fork already shows plugin/source descriptions and supports user-added standard HTTPS manifests. No unreviewed built-in catalog was added. |
 | 450 | completed | The official slot anchor now provides a vertical list container, preventing multiple footer plugins from squeezing each other in either sidebar width. |
+| 455 | completed | Fork PR #24 appends bounded exact native file paths to the draft without upload, copying, scanning, guessing, or auto-send behavior. |
+| 457 | completed | Fork PR #14 already ships the coherent rc.1 credentials format shared with current Web; no private compatibility parser is needed. |
+| 297 | completed | The fork's Windows browse adapter excludes directories that cannot actually be opened, with bounded probes and cancellation-safe handle cleanup. |
+| 133 | next-adapt | Request graceful lifecycle shutdown from NSIS, then retain electron-builder's scoped process checks; never kill every same-named process. |
 | 453 | future-adapt | Useful model-list search and clear-selection UI can be implemented locally without changing provider/model request behavior. |
 | 454 | consolidate | Ubuntu packaging belongs with Issues/PRs #220/#264/#265/#304 in one audited Linux packaging design. |
 | 441 | completed | Covered by fork PR #5. |
@@ -239,9 +275,9 @@ All other open Issues remain `pending-review`:
 
 `443, 435, 434, 431, 425, 415, 408, 407, 405, 393, 387, 373, 372, 369,
 367, 363, 357, 351, 347, 341, 339, 338, 335, 328,
-326, 325, 321, 318, 317, 314, 311, 310, 308, 299, 297, 289, 286, 285, 253,
+326, 325, 321, 318, 317, 314, 311, 310, 308, 299, 289, 286, 285, 253,
 247, 245, 242, 230, 221, 200, 198, 195, 186, 176, 175, 173, 170, 169, 160,
-151, 146, 138, 137, 136, 133, 131, 125, 119, 110, 109, 108, 103, 99, 95,
+151, 146, 138, 137, 136, 131, 125, 119, 110, 109, 108, 103, 99, 95,
 94, 91, 86, 46, 45, 20`.
 
 ## Explicit pull-request decisions
@@ -251,6 +287,9 @@ All other open Issues remain `pending-review`:
 | 428 | already-covered | Fork PR #7 implements the valid lifecycle-safe subset. |
 | 451 | official-integrated | Official labels are in `8dbb94428e`; the fork retains its component-prop translation implementation to avoid module-level mutable state. |
 | 452 | ancestry-integrated | The official test-expectation alignment commit is included in fork PR #18; equivalent fork behavior was already covered. |
+| 456 | completed | Fork PR #23 adapted the remaining Market smoke capability; fork PR #25 records official ancestry while retaining stronger Windows checkpoint semantics. |
+| 440 | already-covered | The fork's rc.1 Windows adapter probes actual directory enterability and cancellation cleanup instead of adding the PR's obsolete rc7 stat patch. |
+| 211 | next-adapt | Keep the graceful single-instance quit request, but delegate remaining checks to electron-builder instead of running an unscoped forced taskkill. |
 | 349 | completed | Fork PR #18 adapts the intent with structured YAML parsing, bounded reads, package-name filtering, explicit consent, and recovery integration. |
 | 445 | rejected | Treating a truncated 300-item provider response as a complete scan creates false catalog semantics; require explicit partial-catalog support. |
 | 278 | split-review | Review manual verified updates, script suppression, cursor validation, receipts, and automatic future-code installation as separate risk units. |
