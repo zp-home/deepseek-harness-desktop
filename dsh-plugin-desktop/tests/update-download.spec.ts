@@ -204,6 +204,58 @@ describe('desktop update installer download', () => {
     await expectNoPartialFiles(directory)
   })
 
+  it.each([
+    ['shorter', windowsArtifact(), windowsArtifact().byteLength + 512],
+    ['longer', Buffer.concat([windowsArtifact(), Buffer.alloc(32)]), windowsArtifact().byteLength],
+  ] as const)('rejects a body %s than its valid declared length', async (_label, artifact, declaredSize) => {
+    const directory = await temporaryDirectory()
+    await expectFailure(downloadDesktopUpdate({
+      platform: 'win32',
+      version: '2.5.1',
+      destinationPath: destinationPath(directory, 'win32', '2.5.1'),
+      request: async () => chunkedResponse(
+        [artifact],
+        { 'content-length': String(declaredSize) },
+      ),
+    }), 'invalid-artifact')
+    await expectNoPartialFiles(directory)
+  })
+
+  it('accepts a body whose delivered and declared lengths match', async () => {
+    const directory = await temporaryDirectory()
+    const artifact = windowsArtifact()
+    const path = destinationPath(directory, 'win32', '2.5.2')
+    await expect(downloadDesktopUpdate({
+      platform: 'win32',
+      version: '2.5.2',
+      destinationPath: path,
+      request: async () => chunkedResponse(
+        [artifact.subarray(0, 64), artifact.subarray(64)],
+        { 'content-length': String(artifact.byteLength) },
+      ),
+    })).resolves.toBe(path)
+    expect(await readFile(path)).toEqual(Buffer.from(artifact))
+    await expectNoPartialFiles(directory)
+  })
+
+  it.each([undefined, 'not-a-decimal'])('accepts a valid artifact with content-length %s', async (declaredSize) => {
+    const directory = await temporaryDirectory()
+    const artifact = windowsArtifact()
+    const version = declaredSize === undefined ? '2.5.3' : '2.5.4'
+    const path = destinationPath(directory, 'win32', version)
+    await expect(downloadDesktopUpdate({
+      platform: 'win32',
+      version,
+      destinationPath: path,
+      request: async () => chunkedResponse(
+        [artifact],
+        declaredSize === undefined ? {} : { 'content-length': declaredSize },
+      ),
+    })).resolves.toBe(path)
+    expect(await readFile(path)).toEqual(Buffer.from(artifact))
+    await expectNoPartialFiles(directory)
+  })
+
   it('passes the caller signal and removes a partial file when aborted during streaming', async () => {
     const directory = await temporaryDirectory()
     const controller = new AbortController()
