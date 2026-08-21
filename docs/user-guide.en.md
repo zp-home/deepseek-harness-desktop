@@ -54,6 +54,11 @@ dsh plugin update
 
 An explicit `--profile <name>` always wins. Restart DSH Desktop after plugin changes so the new bundle enters the Loader composition.
 
+## Dropping files
+
+Dropping ordinary files into the window appends the original absolute paths obtained through the operating-system bridge to the current composer without sending.
+Images remain owned by the image-attachment flow and folders by workspace drop; Desktop does not upload, copy, or scan files for this feature.
+
 ## Opening the terminal
 
 Choose **Open DSH Terminal** from the tray. macOS opens Terminal; Windows prefers Windows Terminal and falls back to PowerShell or Command Prompt when it is unavailable.

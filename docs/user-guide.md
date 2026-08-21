@@ -54,6 +54,11 @@ dsh plugin update
 
 显式 `--profile <name>` 始终优先。插件变更后需要重启 DSH Desktop，才能让新的 bundle 进入 Loader 组合。
 
+## 文件拖入
+
+将普通文件拖入窗口会把 Desktop 通过系统接口取得的原始绝对路径追加到当前输入框，但不会自动发送。
+图片仍使用图片附件流程，文件夹仍按工作区拖入处理；Desktop 不会为这项功能上传、复制或扫描文件。
+
 ## 打开终端
 
 从托盘选择 **Open DSH Terminal**。macOS 会打开 Terminal，Windows 会优先使用 Windows Terminal，找不到时回退到 PowerShell 或命令提示符。
