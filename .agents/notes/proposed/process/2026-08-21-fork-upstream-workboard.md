@@ -38,13 +38,12 @@ The snapshot contains 99 open Issues and 38 open pull requests.
 - Synchronized official Desktop changes in fork PR #6.
 - Added lifecycle-safe external sandbox integration guidance in fork PR #7,
   correcting the upstream proposal's multi-service ownership problem.
+- Adapted official PR #121 in fork PR #8 with exact declared/delivered update
+  byte validation, broader header coverage, and partial-file cleanup tests.
 - Disabled pushes to the official repository through the `upstream` remote.
 
 ### In progress
 
-- Adapt official PR #121 as a stricter update-download integrity check: exact
-  byte matching for valid `content-length`, streaming cap preservation, partial
-  cleanup, and focused tests.
 - Keep this ledger synchronized as items are audited or implemented.
 
 ### Next
@@ -97,7 +96,7 @@ All other open Issues remain `pending-review`:
 | PR | Status | Decision |
 | ---: | --- | --- |
 | 428 | already-covered | Fork PR #7 implements the valid lifecycle-safe subset. |
-| 121 | in-progress | Adapt with exact declared/delivered byte matching and broader tests. |
+| 121 | completed | Adapted with exact declared/delivered byte matching in fork PR #8. |
 | 122 | next-audit | Small lifecycle fix, but disposal semantics need confirmation. |
 | 209 | future-adapt | Take only selectable-profile recovery, excluding unrelated SIGTERM work. |
 | 266 | future-validation | Potential sandbox fix; size and real packaged behavior are not accepted yet. |
