@@ -8,8 +8,8 @@ granting blanket approval to upstream Issues or pull requests.
 
 Snapshot: 2026-08-21, official `master` at `a4865e2c03a8ec1e6945797196ce4d64e3202360`.
 The snapshot contains 104 open Issues and 39 open pull requests. The active
-fork adaptation line contains this official commit; fork PR #18 carries the
-remaining `master` synchronization and the bounded plugin-install guidance.
+fork `master` contains this official commit and is 44 commits ahead and 0
+behind after fork PR #18 was merged.
 
 ## Decision policy
 
@@ -108,16 +108,18 @@ or message-semantics customization to obtain them.
   so another plugin cannot horizontally squeeze or deform the Market launcher.
 - Merged fork PR #17 after all five CI jobs passed. It contains the Issue #450
   footer fix and leaves the existing trusted-source Market boundary unchanged.
+- Merged fork PR #18 at `da821c2375` after all five CI jobs passed, including
+  the Windows installer and portable archive and the macOS smoke artifact. It
+  integrates official Desktop `master` and closes the bounded adaptation of
+  Issue #348 / official PR #349.
+- The Issue #348 adaptation captures pnpm's temporary `allowBuilds` placeholders
+  before protected rollback, parses only bounded top-level YAML package entries,
+  and provides an explicit-review command snippet. It never auto-authorizes a
+  lifecycle or native script and never weakens recovery.
 - Disabled pushes to the official repository through the `upstream` remote.
 
 ### In progress
 
-- Fork PR #18 adapts Issue #348 and official PR #349. It reads pnpm's temporary
-  `allowBuilds` placeholders before protected rollback, uses a structured YAML
-  parser with a 64 KiB input limit and legal-package-name filtering, and tells
-  the user to authorize only reviewed packages. It never changes a value to
-  `true`, never weakens CI mode, and never bypasses recovery.
-- CI for fork PR #18 must pass before a merge commit is made into fork `master`.
 - Keep this ledger synchronized as high-impact Issues and pull requests are
   audited or implemented.
 
@@ -172,7 +174,7 @@ or message-semantics customization to obtain them.
 | 454 | consolidate | Ubuntu packaging belongs with Issues/PRs #220/#264/#265/#304 in one audited Linux packaging design. |
 | 441 | completed | Covered by fork PR #5. |
 | 427 | completed | Covered by the corrected fork PR #7. |
-| 348 | in-progress | Fork PR #18 adapts safe, bounded `allowBuilds` guidance while preserving explicit consent and rollback. |
+| 348 | completed | Fork PR #18 adapts safe, bounded `allowBuilds` guidance while preserving explicit consent and rollback. |
 | 346 | next-audit | Separate dshfind installability from the truncated 1024Store provider; do not solve availability by pretending partial data is complete or adding catalogs. |
 | 340 | next-audit | Cancellation is valuable, but Host subprocess termination and recovery convergence must be proven before enabling the UI action. |
 | 334 | future-adapt | Preserve rollback and expose only bounded, secret-redacted actionable failure details. |
@@ -200,7 +202,7 @@ All other open Issues remain `pending-review`:
 | 428 | already-covered | Fork PR #7 implements the valid lifecycle-safe subset. |
 | 451 | already-covered | Fork PR #5 already localizes these rc.1 trajectory and Thinking labels. Do not duplicate the patch while official CI is failing; reassess replacement only after upstream merges. |
 | 452 | ancestry-integrated | The official test-expectation alignment commit is included in fork PR #18; equivalent fork behavior was already covered. |
-| 349 | in-progress | Fork PR #18 adapts the intent with structured YAML parsing, bounded reads, package-name filtering, explicit consent, and recovery integration. |
+| 349 | completed | Fork PR #18 adapts the intent with structured YAML parsing, bounded reads, package-name filtering, explicit consent, and recovery integration. |
 | 445 | rejected | Treating a truncated 300-item provider response as a complete scan creates false catalog semantics; require explicit partial-catalog support. |
 | 278 | split-review | Review manual verified updates, script suppression, cursor validation, receipts, and automatic future-code installation as separate risk units. |
 | 121 | completed | Adapted with exact declared/delivered byte matching in fork PR #8. |
