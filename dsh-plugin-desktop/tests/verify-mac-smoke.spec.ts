@@ -56,6 +56,7 @@ function options(
   modeOverrides: ReadonlyMap<string, number> = new Map(),
 ) {
   const calls: Array<{ command: string; args: readonly string[] }> = []
+  const plistReads: string[] = []
   const removeMountPoint = vi.fn()
   const value: MacSmokeVerificationOptions = {
     distDir: '/release/dist',
@@ -63,6 +64,14 @@ function options(
     listDmgs: () => ['/release/dist/DSH Desktop-2.0.1.dmg'],
     makeMountPoint: () => '/private/tmp/dsh-desktop-dmg-smoke-test',
     run: (command, args) => { calls.push({ command, args: [...args] }) },
+    readInfoPlist: path => {
+      plistReads.push(path)
+      return {
+        CFBundleAllowMixedLocalizations: true,
+        CFBundleDevelopmentRegion: 'en',
+        CFBundleLocalizations: ['en', 'zh_CN'],
+      }
+    },
     removeMountPoint,
     exists: existsSync,
     stat: path => {
@@ -75,7 +84,7 @@ function options(
     },
     ...overrides,
   }
-  return { calls, removeMountPoint, value }
+  return { calls, plistReads, removeMountPoint, value }
 }
 
 afterEach(() => {
@@ -138,6 +147,7 @@ describe('macOS DMG smoke artifact verification', () => {
       },
       { command: 'hdiutil', args: ['detach', value.root] },
     ])
+    expect(harness.plistReads).toEqual([value.infoPlist])
     const nodePtySmoke = harness.calls.find(call => call.command === '/usr/bin/env')
     expect(nodePtySmoke?.args.at(-1)).toContain("pty.spawn('/usr/bin/true'")
     expect(harness.removeMountPoint).toHaveBeenCalledWith(value.root)
@@ -164,6 +174,49 @@ describe('macOS DMG smoke artifact verification', () => {
       },
       { command: 'hdiutil', args: ['detach', value.root] },
     ])
+    expect(harness.removeMountPoint).toHaveBeenCalledWith(value.root)
+  })
+
+  it.each([
+    [
+      'mixed localization support is disabled',
+      {
+        CFBundleAllowMixedLocalizations: false,
+        CFBundleDevelopmentRegion: 'en',
+        CFBundleLocalizations: ['en', 'zh_CN'],
+      },
+      'CFBundleAllowMixedLocalizations',
+    ],
+    [
+      'the development region is not English',
+      {
+        CFBundleAllowMixedLocalizations: true,
+        CFBundleDevelopmentRegion: 'zh_CN',
+        CFBundleLocalizations: ['en', 'zh_CN'],
+      },
+      'CFBundleDevelopmentRegion',
+    ],
+    [
+      'the supported localization list is incomplete',
+      {
+        CFBundleAllowMixedLocalizations: true,
+        CFBundleDevelopmentRegion: 'en',
+        CFBundleLocalizations: ['en'],
+      },
+      'CFBundleLocalizations',
+    ],
+  ])('rejects the application when %s', (_description, infoPlist, expectedDetail) => {
+    const value = fixture()
+    const harness = options({
+      makeMountPoint: () => value.root,
+      readInfoPlist: () => infoPlist,
+    }, value.modeOverrides)
+
+    expectSmokeFailure(harness, expectedDetail)
+    expect(harness.calls.at(-1)).toEqual({
+      command: 'hdiutil',
+      args: ['detach', value.root],
+    })
     expect(harness.removeMountPoint).toHaveBeenCalledWith(value.root)
   })
 

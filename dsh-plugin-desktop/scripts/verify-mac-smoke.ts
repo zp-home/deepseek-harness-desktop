@@ -30,6 +30,8 @@ export interface MacSmokeVerificationOptions {
   readonly makeMountPoint: () => string
   /** Execute one macOS verification command. */
   readonly run: (command: string, args: readonly string[]) => void
+  /** Decode the packaged Info.plist through the host plist tooling. */
+  readonly readInfoPlist: (path: string) => unknown
   /** Remove the detached empty mount point. */
   readonly removeMountPoint: (mountPoint: string) => void
   /** Probe a physical path inside the mounted application. */
@@ -57,6 +59,38 @@ function run(command: string, args: readonly string[]): void {
   }
 }
 
+function readInfoPlist(path: string): unknown {
+  const result = spawnSync('plutil', ['-convert', 'json', '-o', '-', path], {
+    encoding: 'utf8',
+  })
+  if (result.error !== undefined) throw result.error
+  if (result.status !== 0) {
+    throw new Error(`plutil failed to decode ${path} with status ${String(result.status)}`)
+  }
+  return JSON.parse(result.stdout)
+}
+
+function verifyInfoPlist(infoPlist: unknown, infoPlistPath: string): void {
+  if (typeof infoPlist !== 'object' || infoPlist === null || Array.isArray(infoPlist)) {
+    throw new Error(`packaged application has an invalid Info.plist object: ${infoPlistPath}`)
+  }
+  const values = infoPlist as Record<string, unknown>
+  if (values.CFBundleAllowMixedLocalizations !== true) {
+    throw new Error('packaged Info.plist must enable CFBundleAllowMixedLocalizations')
+  }
+  if (values.CFBundleDevelopmentRegion !== 'en') {
+    throw new Error('packaged Info.plist must declare CFBundleDevelopmentRegion as en')
+  }
+  if (
+    !Array.isArray(values.CFBundleLocalizations)
+    || values.CFBundleLocalizations.length !== 2
+    || values.CFBundleLocalizations[0] !== 'en'
+    || values.CFBundleLocalizations[1] !== 'zh_CN'
+  ) {
+    throw new Error('packaged Info.plist must declare CFBundleLocalizations as en and zh_CN')
+  }
+}
+
 function defaultOptions(): MacSmokeVerificationOptions {
   const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
   return {
@@ -67,6 +101,7 @@ function defaultOptions(): MacSmokeVerificationOptions {
     listDmgs,
     makeMountPoint: () => mkdtempSync(join(tmpdir(), 'dsh-desktop-dmg-smoke-')),
     run,
+    readInfoPlist,
     removeMountPoint: mountPoint => rmdirSync(mountPoint),
     exists: existsSync,
     stat: path => {
@@ -108,6 +143,7 @@ export function verifyMacSmoke(
       throw new Error(`packaged application is missing ${infoPlistPath}`)
     }
     options.run('plutil', ['-lint', infoPlistPath])
+    verifyInfoPlist(options.readInfoPlist(infoPlistPath), infoPlistPath)
 
     const macosDirectory = join(appPath, 'Contents', 'MacOS')
     if (!options.exists(macosDirectory)) {

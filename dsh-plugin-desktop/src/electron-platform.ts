@@ -1,7 +1,20 @@
-import { app } from 'electron'
+import { app, Menu } from 'electron'
 import type { BrowserWindow, NativeImage } from 'electron'
+import { macApplicationMenuTemplate, type MacApplicationMenuOptions } from './native-menu.ts'
 import type { DesktopPlatform } from './runtime.ts'
 import type { DesktopDownloadPlatform } from './update-download.ts'
+
+export interface ElectronApplicationMenuRegistration {
+  isCurrent(): boolean
+  release(): void
+}
+
+function inactiveApplicationMenu(): ElectronApplicationMenuRegistration {
+  return {
+    isCurrent: () => true,
+    release: () => {},
+  }
+}
 
 /** Native presentation and capability differences selected once at startup. */
 export interface ElectronPlatformStrategy {
@@ -11,6 +24,7 @@ export interface ElectronPlatformStrategy {
   readonly canToggleShellMode: boolean
   configureApplication(icon: NativeImage): void
   configureWindow(window: BrowserWindow): void
+  installApplicationMenu(options: MacApplicationMenuOptions): ElectronApplicationMenuRegistration
   refreshThemeMaterial(window: BrowserWindow): void
 }
 
@@ -24,6 +38,10 @@ class WindowsPlatformStrategy implements ElectronPlatformStrategy {
 
   configureWindow(window: BrowserWindow): void {
     window.removeMenu()
+  }
+
+  installApplicationMenu(_options: MacApplicationMenuOptions): ElectronApplicationMenuRegistration {
+    return inactiveApplicationMenu()
   }
 
   refreshThemeMaterial(window: BrowserWindow): void {
@@ -43,6 +61,21 @@ class MacPlatformStrategy implements ElectronPlatformStrategy {
 
   configureWindow(_window: BrowserWindow): void {}
 
+  installApplicationMenu(options: MacApplicationMenuOptions): ElectronApplicationMenuRegistration {
+    const previousMenu = Menu.getApplicationMenu()
+    const menu = Menu.buildFromTemplate(macApplicationMenuTemplate(options))
+    let active = true
+    Menu.setApplicationMenu(menu)
+    return {
+      isCurrent: () => active && Menu.getApplicationMenu() === menu,
+      release: () => {
+        if (!active) return
+        active = false
+        if (Menu.getApplicationMenu() === menu) Menu.setApplicationMenu(previousMenu)
+      },
+    }
+  }
+
   refreshThemeMaterial(_window: BrowserWindow): void {}
 }
 
@@ -55,6 +88,10 @@ class LinuxPlatformStrategy implements ElectronPlatformStrategy {
   configureApplication(_icon: NativeImage): void {}
 
   configureWindow(_window: BrowserWindow): void {}
+
+  installApplicationMenu(_options: MacApplicationMenuOptions): ElectronApplicationMenuRegistration {
+    return inactiveApplicationMenu()
+  }
 
   refreshThemeMaterial(_window: BrowserWindow): void {}
 }

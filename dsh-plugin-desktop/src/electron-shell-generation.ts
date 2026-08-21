@@ -10,8 +10,11 @@ import {
   Tray,
 } from 'electron'
 import { formatDesktopExitCode } from './desktop-logger.ts'
-import type { ElectronPlatformStrategy } from './electron-platform.ts'
-import type { DesktopNotification, DesktopShellSpec } from './runtime.ts'
+import type {
+  ElectronApplicationMenuRegistration,
+  ElectronPlatformStrategy,
+} from './electron-platform.ts'
+import type { DesktopLocale, DesktopNotification, DesktopShellSpec } from './runtime.ts'
 import { prepareTrayIcon } from './tray-icons.ts'
 import { desktopWindowOptions } from './window-options.ts'
 
@@ -35,6 +38,8 @@ export interface ElectronShellGenerationOptions {
   readonly spec: DesktopShellSpec
   readonly preloadPath: string
   readonly isQuitting: () => boolean
+  readonly applicationMenuOpenLabel: () => string
+  readonly applicationMenuLocale: () => DesktopLocale
   readonly buildTrayTemplate: () => Electron.MenuItemConstructorOptions[]
   readonly stopRendererBootMonitoring: () => void
   readonly abortRendererBootMonitoring: (cause: unknown) => void
@@ -49,6 +54,7 @@ export class ElectronShellGeneration {
   private mounted = false
   private released = false
   private attentionCount = 0
+  private applicationMenu: ElectronApplicationMenuRegistration | undefined
   private cleanupListeners: (() => void) | undefined
 
   constructor(private readonly options: ElectronShellGenerationOptions) {}
@@ -178,7 +184,7 @@ export class ElectronShellGeneration {
       tray = new Tray(prepareTrayIcon(spec.trayIcons, platform.platform))
       this.tray = tray
       tray.setToolTip(spec.productName)
-      this.refreshTrayMenu()
+      this.refreshMenus()
       tray.on('click', show)
       beforeInteractive?.()
       this.mounted = true
@@ -219,9 +225,29 @@ export class ElectronShellGeneration {
       : await dialog.showOpenDialog(window, options)
   }
 
+  refreshMenus(): void {
+    this.refreshApplicationMenu()
+    this.refreshTrayMenu()
+  }
+
   refreshTrayMenu(): void {
     if (this.tray === undefined) return
     this.tray.setContextMenu(Menu.buildFromTemplate(this.options.buildTrayTemplate()))
+  }
+
+  private refreshApplicationMenu(): void {
+    const current = this.applicationMenu
+    if (current !== undefined) {
+      if (!current.isCurrent()) return
+      this.applicationMenu = undefined
+      current.release()
+    }
+    this.applicationMenu = this.options.platform.installApplicationMenu({
+      productName: this.options.spec.productName,
+      locale: this.options.applicationMenuLocale(),
+      openDesktopLabel: this.options.applicationMenuOpenLabel(),
+      showDesktop: () => { this.show() },
+    })
   }
 
   refreshThemeMaterial(): void {
@@ -235,13 +261,16 @@ export class ElectronShellGeneration {
 
     const window = this.window
     const tray = this.tray
+    const applicationMenu = this.applicationMenu
     this.clearAttention()
     this.window = undefined
     this.tray = undefined
+    this.applicationMenu = undefined
     if (window === undefined) return
 
     this.cleanupListeners?.()
     this.cleanupListeners = undefined
+    applicationMenu?.release()
     tray?.destroy()
     if (!window.isDestroyed()) window.destroy()
   }

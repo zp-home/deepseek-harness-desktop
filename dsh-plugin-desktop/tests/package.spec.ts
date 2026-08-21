@@ -35,6 +35,7 @@ const manifest = JSON.parse(readFileSync(new URL('package.json', packageRoot), '
     toolsets?: Record<string, unknown>
     files?: unknown
     mac?: {
+      extendInfo?: unknown
       hardenedRuntime?: unknown
       icon?: unknown
       mergeASARs?: unknown
@@ -516,6 +517,11 @@ describe('published package surface', () => {
     ])
     expect(manifest.build?.mac?.icon).toBe('build/app-icon-mac.png')
     expect(manifest.build?.mac?.mergeASARs).toBe(false)
+    expect(manifest.build?.mac?.extendInfo).toEqual({
+      CFBundleAllowMixedLocalizations: true,
+      CFBundleDevelopmentRegion: 'en',
+      CFBundleLocalizations: ['en', 'zh_CN'],
+    })
     expect(manifest.build?.win?.icon).toBe('build/app-icon.png')
     expect(manifest.build?.win?.target).toEqual([{
       target: 'nsis',
