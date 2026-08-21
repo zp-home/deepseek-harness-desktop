@@ -8,8 +8,8 @@ granting blanket approval to upstream Issues or pull requests.
 
 Snapshot: 2026-08-21, official `master` at `7ff6c98bc561d424fa8d2b65f8c3ba840f37f566`.
 The snapshot contains 102 open Issues and 40 open pull requests. Fork `master`
-is 36 commits ahead and 0 behind after the `0.1.1-rc.1` runtime upgrade PR #14
-and its workboard finalization PR #15 were merged.
+is 38 commits ahead and 0 behind after the latest-core revalidation PR #16 was
+merged.
 
 ## Decision policy
 
@@ -99,6 +99,13 @@ or message-semantics customization to obtain them.
   family, fork branch, and official Desktop branch after PR #14. The fork is
   already on the newest coherent DSH release, so no duplicate core change is
   required.
+- Audited Issue #449 against the fork Market. Plugin cards and details already
+  expose normalized summaries/descriptions, source rows expose attribution and
+  endpoints, and users can add a trusted standard HTTPS manifest. Additional
+  built-in catalogs remain a separate supply-chain decision.
+- Resolved Issue #450 at the documented `sidebar.footer.action` style anchor.
+  Footer list entries now stack vertically in expanded and collapsed sidebars,
+  so another plugin cannot horizontally squeeze or deform the Market launcher.
 - Disabled pushes to the official repository through the `upstream` remote.
 
 ### In progress
@@ -108,11 +115,6 @@ or message-semantics customization to obtain them.
 
 ### Next
 
-- Audit Issue #449 as two decisions: plugin descriptions are a useful UX
-  candidate; adding catalog sources still requires supply-chain ownership review.
-- Audit Issue #450 as a Desktop-owned navigation layout change: preserve a
-  stable Market entry while allowing multiple lower-sidebar plugins to stack or
-  collapse without overlap. This does not require an Agent-core fork.
 - Evaluate PR #266 for the Windows restricted sandbox only after measuring its
   packaged-size cost and running a real Windows shell probe matrix.
 - Consolidate duplicate plugin-install and Linux-packaging reports before
@@ -139,8 +141,8 @@ or message-semantics customization to obtain them.
 | ---: | --- | --- |
 | 401 | completed | The initial rc8 milestone shipped; Issue #448 now supersedes that runtime target. |
 | 448 | completed | The coherent runtime/package family shipped through fork PR #14. Separate core self-update remains a later architecture decision. |
-| 449 | pending-review | Descriptions are a positive UX candidate; extra catalogs require a separate trust and maintenance decision. |
-| 450 | next-audit | The lower-sidebar collision is a positive Desktop UI issue; adapt it only with bounded layout behavior and multi-plugin tests. |
+| 449 | completed | The fork already shows plugin/source descriptions and supports user-added standard HTTPS manifests. No unreviewed built-in catalog was added. |
+| 450 | completed | The official slot anchor now provides a vertical list container, preventing multiple footer plugins from squeezing each other in either sidebar width. |
 | 441 | completed | Covered by fork PR #5. |
 | 427 | completed | Covered by the corrected fork PR #7. |
 | 439, 305 | future-validation | Restricted Windows sandbox needs the binary-size and shell probe gate above. |
