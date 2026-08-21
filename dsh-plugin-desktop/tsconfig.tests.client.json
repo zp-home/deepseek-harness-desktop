@@ -12,6 +12,8 @@
     "tests/client-directory-picker.spec.ts",
     "tests/client-environment.spec.ts",
     "tests/client-workspace-folder-drop.spec.ts",
+    "tests/prompt-history.spec.ts",
+    "tests/prompt-history.client.spec.tsx",
     "tests/theme-presenter.spec.ts"
   ]
 }

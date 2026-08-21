@@ -32,20 +32,19 @@ interface NavigationState {
   readonly draft: string
 }
 
-/** Session-local recall view derived from loaded durable conversation nodes. */
+/** In-memory submitted-input history isolated by session. */
 export class PromptHistory {
   private readonly entries = new Map<string, string[]>()
   private readonly navigation = new Map<string, NavigationState>()
 
-  /** Synchronize one session from its currently loaded durable conversation nodes. */
+  /** Replace an idle session's entries from its currently loaded durable conversation nodes. */
   sync(sessionId: string, drafts: readonly string[]): void {
+    if (this.navigation.has(sessionId)) return
     const entries: string[] = []
     for (const draft of drafts) {
       if (draft.trim() !== '' && entries.at(-1) !== draft) entries.push(draft)
     }
     this.entries.set(sessionId, entries)
-    const navigation = this.navigation.get(sessionId)
-    if (navigation !== undefined && navigation.index >= entries.length) this.navigation.delete(sessionId)
   }
 
   /** Move backward through a session's submitted inputs, starting from the current draft. */
@@ -114,7 +113,7 @@ function textFromNode(node: ConversationHistoryNode): string | undefined {
   return text === '' ? undefined : text
 }
 
-function hydrateHistory(ctx: ClientContext, history: PromptHistory, sessionId: string): void {
+function syncHistory(ctx: ClientContext, history: PromptHistory, sessionId: string): void {
   const binding = sessions(ctx)?.binding(sessionId)
   if (binding === undefined) return
   const drafts = binding.session.getSnapshot().nodes.flatMap(node => {
@@ -134,13 +133,9 @@ function restoreDraft(ctx: ClientContext, sessionId: string, textarea: HTMLTextA
   })
 }
 
-function isHistoryArrow(event: KeyboardEvent): event is KeyboardEvent & { key: 'ArrowUp' | 'ArrowDown' } {
+function isUnmodifiedArrow(event: KeyboardEvent): event is KeyboardEvent & { key: 'ArrowUp' | 'ArrowDown' } {
   return (event.key === 'ArrowUp' || event.key === 'ArrowDown')
     && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
-    && !event.isComposing
-    // keyCode 229 is the legacy IME signal used by the standard composer.
-    // oxlint-disable-next-line typescript/no-deprecated
-    && event.keyCode !== 229
 }
 
 function isHistoryEntryPoint(textarea: HTMLTextAreaElement, key: 'ArrowUp' | 'ArrowDown'): boolean {
@@ -162,11 +157,10 @@ export function installPromptHistory(ctx: ClientContext, documentRoot: Document 
   const onKeyDown = (event: KeyboardEvent): void => {
     const textarea = composerTextarea(event.target)
     const sessionId = currentSessionId(ctx)
-    if (textarea === undefined || sessionId === undefined) return
-    // The standard composer owns candidate-menu arrows and marks them handled.
-    if (event.defaultPrevented || !isHistoryArrow(event) || textarea.disabled || textarea.readOnly) return
+    if (textarea === undefined || sessionId === undefined || event.defaultPrevented) return
+    if (!isUnmodifiedArrow(event) || textarea.disabled || textarea.readOnly) return
     if (!history.isNavigating(sessionId) && !isHistoryEntryPoint(textarea, event.key)) return
-    hydrateHistory(ctx, history, sessionId)
+    syncHistory(ctx, history, sessionId)
     const draft = event.key === 'ArrowUp'
       ? history.previous(sessionId, textarea.value)
       : history.next(sessionId)
@@ -176,7 +170,6 @@ export function installPromptHistory(ctx: ClientContext, documentRoot: Document 
   }
 
   documentRoot.addEventListener('input', onInput)
-  // Bubble after the standard React composer has arbitrated its key.
   documentRoot.addEventListener('keydown', onKeyDown)
   return () => {
     documentRoot.removeEventListener('input', onInput)
