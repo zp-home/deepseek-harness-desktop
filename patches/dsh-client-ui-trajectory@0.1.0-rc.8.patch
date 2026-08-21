@@ -1,0 +1,111 @@
+diff --git a/lib/client.js b/lib/client.js
+index 928d9f0a6d2e1f1af6b6aa627f76a6efcb9c6fdb..c326027772ea7f0dae7071aadcf0c5d0a4da4978 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -49,18 +49,19 @@ window.__ModuleLoader__.load({
+ 		const zh = {
+ 			"view.trajectory": "轨迹",
+ 			"toolbar.aria": "轨迹工具栏",
+-			"toolbar.duration": "Duration",
+-			"toolbar.useActualDuration": "Use actual duration",
+-			"toolbar.useEqualWidth": "Use equal-width operations",
++			"toolbar.duration": "时长",
++			"toolbar.useActualDuration": "使用实际时长",
++			"toolbar.useEqualWidth": "使用等宽操作",
+ 			"toolbar.actualTime": "实际时间",
+-			"toolbar.turns": "Turns",
+-			"toolbar.expandTurns": "Expand turns",
+-			"toolbar.collapseTurns": "Collapse turns",
+-			"toolbar.calls": "Calls",
+-			"toolbar.expandCalls": "Expand calls",
+-			"toolbar.collapseCalls": "Collapse calls",
++			"toolbar.turns": "轮次",
++			"toolbar.expandTurns": "展开轮次",
++			"toolbar.collapseTurns": "折叠轮次",
++			"toolbar.calls": "调用",
++			"toolbar.expandCalls": "展开调用",
++			"toolbar.collapseCalls": "折叠调用",
+ 			"toolbar.search": "搜索轨迹",
+-			"toolbar.searchPlaceholder": "搜索"
++			"toolbar.searchPlaceholder": "搜索",
++			"detail.thinking": "思考过程"
+ 		};
+ 		/** English dictionary. */
+ 		const en = {
+@@ -77,7 +78,8 @@ window.__ModuleLoader__.load({
+ 			"toolbar.expandCalls": "Expand calls",
+ 			"toolbar.collapseCalls": "Collapse calls",
+ 			"toolbar.search": "Search trajectory",
+-			"toolbar.searchPlaceholder": "Search"
++			"toolbar.searchPlaceholder": "Search",
++			"detail.thinking": "Thinking"
+ 		};
+ 		//#endregion
+ 		//#region lib/types/client/trajectory-definition-common.js
+@@ -4050,7 +4052,7 @@ window.__ModuleLoader__.load({
+ 				}, index) : null)
+ 			});
+ 		}
+-		function MarkdownRecordContent({ record, rendered, preview = false, thinkingExpanded, onThinkingExpandedChange, onOpenCall }) {
++		function MarkdownRecordContent({ record, rendered, preview = false, thinkingLabel, thinkingExpanded, onThinkingExpandedChange, onOpenCall }) {
+ 			if (!rendered && record.cell.sourceBlocks && record.cell.sourceBlocks.length > 0) return (0, react_jsx_runtime.jsx)(SourceBlocks, {
+ 				blocks: record.cell.sourceBlocks,
+ 				onOpenCall
+@@ -4073,7 +4075,7 @@ window.__ModuleLoader__.load({
+ 								onClick: () => {
+ 									onThinkingExpandedChange(!thinkingExpanded);
+ 								},
+-								children: ["Thinking", (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronRightOutline14, {
++								children: [thinkingLabel, (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronRightOutline14, {
+ 									className: TrajectoryTable_module_css_default.thinkingChevron,
+ 									size: 12
+ 								})]
+@@ -4287,7 +4289,7 @@ window.__ModuleLoader__.load({
+ 		* @param props - Grouped trajectory data and whole-ledger fold state.
+ 		* @returns The ledger and an optional local record inspector.
+ 		*/
+-		function TrajectoryTable({ requestNumbers: sessionRequestNumbers, turns, streamingCells = [], timelineFocusIndexes = null, searchMatchIndexes = null, onSelectedIndexChange, onRecordSelect, recordSelection = null, recordFocus = null, historyLoading = false, olderHistoryLoading = false, historyStartSeq, hasOlderRecords = false, onLoadOlder, onClearSelection, collapsedTurns, onToggleTurn, collapsedAssistants, onToggleAssistant, inspectCallId = null, onInspectApplied }) {
++		function TrajectoryTable({ requestNumbers: sessionRequestNumbers, turns, streamingCells = [], timelineFocusIndexes = null, searchMatchIndexes = null, onSelectedIndexChange, onRecordSelect, recordSelection = null, recordFocus = null, historyLoading = false, olderHistoryLoading = false, historyStartSeq, hasOlderRecords = false, onLoadOlder, onClearSelection, collapsedTurns, onToggleTurn, collapsedAssistants, onToggleAssistant, thinkingLabel = "Thinking", inspectCallId = null, onInspectApplied }) {
+ 			const [selectedRecordId, setSelectedRecordId] = (0, react.useState)(null);
+ 			const [selectedRequest, setSelectedRequest] = (0, react.useState)(null);
+ 			const [activeTab, setActiveTab] = (0, react.useState)("overview");
+@@ -5130,6 +5132,7 @@ window.__ModuleLoader__.load({
+ 									children: (0, react_jsx_runtime.jsx)(MarkdownRecordContent, {
+ 										record: selected,
+ 										rendered: true,
++										thinkingLabel,
+ 										thinkingExpanded,
+ 										onThinkingExpandedChange: setThinkingExpanded,
+ 										onOpenCall: openCallSummary
+@@ -5210,6 +5213,7 @@ window.__ModuleLoader__.load({
+ 												record: selected,
+ 												rendered: true,
+ 												preview: true,
++												thinkingLabel,
+ 												thinkingExpanded,
+ 												onThinkingExpandedChange: setThinkingExpanded,
+ 												onOpenCall: openCallSummary
+@@ -5267,6 +5271,7 @@ window.__ModuleLoader__.load({
+ 								!promptSelected && selected !== void 0 && activeTab === "rendered" && (0, react_jsx_runtime.jsx)(MarkdownRecordContent, {
+ 									record: selected,
+ 									rendered: true,
++									thinkingLabel,
+ 									thinkingExpanded,
+ 									onThinkingExpandedChange: setThinkingExpanded,
+ 									onOpenCall: openCallSummary
+@@ -5274,6 +5279,7 @@ window.__ModuleLoader__.load({
+ 								!promptSelected && selected !== void 0 && activeTab === "raw" && (0, react_jsx_runtime.jsx)(MarkdownRecordContent, {
+ 									record: selected,
+ 									rendered: false,
++									thinkingLabel,
+ 									thinkingExpanded,
+ 									onThinkingExpandedChange: setThinkingExpanded,
+ 									onOpenCall: openCallSummary
+@@ -7303,6 +7309,7 @@ window.__ModuleLoader__.load({
+ 							onToggleTurn: toggleTurn,
+ 							collapsedAssistants,
+ 							onToggleAssistant: toggleAssistant,
++							thinkingLabel: t("detail.thinking"),
+ 							inspectCallId: inspect?.callId ?? null,
+ 							onInspectApplied: onInspectDone
+ 						})
