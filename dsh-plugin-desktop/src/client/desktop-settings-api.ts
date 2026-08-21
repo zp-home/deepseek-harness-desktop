@@ -5,6 +5,8 @@ const PROFILE_CREATE_PATH = '/api/desktop/profiles/create'
 const PROFILE_SELECT_PATH = '/api/desktop/profiles/select'
 const MARKET_SELECT_PATH = '/api/desktop/market/select'
 const TERMINAL_OPEN_PATH = '/api/desktop/terminal/open'
+const UPDATE_CHECK_PATH = '/api/desktop/updates/check'
+const UPDATE_INSTALL_PATH = '/api/desktop/updates/install'
 const MAX_PROFILES = 256
 const MAX_PROFILE_NAME_LENGTH = 255
 
@@ -26,11 +28,20 @@ export interface DesktopMarketView {
   readonly legacyDefaulted: boolean
 }
 
+/** Safe update state returned by the shared Host coordinator. */
+export interface DesktopUpdateView {
+  readonly status: 'idle' | 'checking' | 'up-to-date' | 'update-available' | 'downloading' | 'error'
+  readonly currentVersion: string
+  readonly latestVersion?: string
+  readonly canInstall: boolean
+}
+
 /** Complete launcher-owned settings projection. */
 export interface DesktopSettingsView {
   readonly current: string
   readonly profiles: readonly DesktopProfileView[]
   readonly market: DesktopMarketView
+  readonly updates: DesktopUpdateView
 }
 
 /** A persisted selection that requires a new Desktop generation. */
@@ -46,6 +57,8 @@ export interface DesktopSettingsApi {
   selectProfile(name: string): Promise<DesktopRestartAcceptance>
   selectMarket(provider: DesktopMarketProvider): Promise<DesktopRestartAcceptance>
   openTerminal(): Promise<void>
+  checkUpdates(): Promise<DesktopUpdateView>
+  installUpdate(version: string): Promise<void>
 }
 
 type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
@@ -56,6 +69,35 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 function isMarketProvider(value: unknown): value is DesktopMarketProvider {
   return value === 'disabled' || value === 'community-market' || value === 'dsh-market'
+}
+
+function isUpdateStatus(value: unknown): value is DesktopUpdateView['status'] {
+  return value === 'idle' || value === 'checking' || value === 'up-to-date'
+    || value === 'update-available' || value === 'downloading' || value === 'error'
+}
+
+function isStableVersion(value: unknown): value is string {
+  return typeof value === 'string' && value.length <= 64
+    && /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/u.test(value)
+}
+
+/** Validate update state before it reaches React state. */
+export function parseDesktopUpdateView(value: unknown): DesktopUpdateView {
+  if (!isObject(value)
+    || !isUpdateStatus(value.status)
+    || !isStableVersion(value.currentVersion)
+    || (value.latestVersion !== undefined && !isStableVersion(value.latestVersion))
+    || typeof value.canInstall !== 'boolean'
+    || ((value.status === 'update-available' || value.status === 'downloading')
+      && value.latestVersion === undefined)) {
+    throw new Error('dsh-plugin-desktop: invalid Desktop update response')
+  }
+  return Object.freeze({
+    status: value.status,
+    currentVersion: value.currentVersion,
+    ...(value.latestVersion === undefined ? {} : { latestVersion: value.latestVersion }),
+    canInstall: value.canInstall,
+  })
 }
 
 function parseProfile(value: unknown): DesktopProfileView {
@@ -87,7 +129,8 @@ export function parseDesktopSettingsView(value: unknown): DesktopSettingsView {
     || !isObject(value.market)
     || !isMarketProvider(value.market.requested)
     || !isMarketProvider(value.market.effective)
-    || typeof value.market.legacyDefaulted !== 'boolean') {
+    || typeof value.market.legacyDefaulted !== 'boolean'
+    || !isObject(value.updates)) {
     throw new Error('dsh-plugin-desktop: invalid Desktop settings response')
   }
   const profiles = value.profiles.map(parseProfile)
@@ -102,6 +145,7 @@ export function parseDesktopSettingsView(value: unknown): DesktopSettingsView {
       effective: value.market.effective,
       legacyDefaulted: value.market.legacyDefaulted,
     }),
+    updates: parseDesktopUpdateView(value.updates),
   })
 }
 
@@ -171,6 +215,12 @@ export function createDesktopSettingsApi(fetcher: FetchLike = globalThis.fetch.b
     async openTerminal() {
       parseDesktopActionAcceptance(await readResponse(await post(fetcher, TERMINAL_OPEN_PATH, {})))
     },
+    async checkUpdates() {
+      return parseDesktopUpdateView(await readResponse(await post(fetcher, UPDATE_CHECK_PATH, {})))
+    },
+    async installUpdate(version: string) {
+      parseDesktopActionAcceptance(await readResponse(await post(fetcher, UPDATE_INSTALL_PATH, { version })))
+    },
   })
 }
 
@@ -180,4 +230,6 @@ export const desktopSettingsPaths = Object.freeze({
   profileSelect: PROFILE_SELECT_PATH,
   marketSelect: MARKET_SELECT_PATH,
   terminalOpen: TERMINAL_OPEN_PATH,
+  updateCheck: UPDATE_CHECK_PATH,
+  updateInstall: UPDATE_INSTALL_PATH,
 })

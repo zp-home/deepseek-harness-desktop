@@ -9,6 +9,7 @@ import type {
   DesktopTrayItem,
 } from '../src/runtime.ts'
 import type { UpdateCheckResult } from '../src/update-checker.ts'
+import type { DesktopUpdateLifecycle } from '../src/update-lifecycle.ts'
 import { apply, Config, inject, type Config as UpdateConfig } from '../src/updates.ts'
 
 const testConfig: UpdateConfig = {
@@ -19,7 +20,11 @@ const testConfig: UpdateConfig = {
 }
 
 function versionResponse(version: unknown): Response {
-  return Response.json({ version })
+  return Response.json({
+    tag_name: typeof version === 'string' ? `v${version}` : version,
+    draft: false,
+    prerelease: false,
+  })
 }
 
 interface Harness {
@@ -32,6 +37,7 @@ interface Harness {
   readonly downloadAndOpen: ReturnType<typeof vi.fn>
   readonly refresh: ReturnType<typeof vi.fn>
   readonly registrationDispose: ReturnType<typeof vi.fn>
+  readonly updates: DesktopUpdateLifecycle
   dispose(): Promise<void>
 }
 
@@ -62,6 +68,7 @@ async function createHarness(options: {
   const downloadAndOpen = vi.fn(options.downloadAndOpen ?? (async () => {}))
   let tray: DesktopTrayItem | undefined
   let disposer: (() => void | Promise<void>) | undefined
+  let updates: DesktopUpdateLifecycle | undefined
   const runtime = {
     locale: options.locale ?? 'en',
     updates: {
@@ -87,10 +94,14 @@ async function createHarness(options: {
       disposer = register()
       return disposer
     },
+    provide: (name: string, value: unknown) => {
+      if (name === 'desktopUpdates') updates = value as DesktopUpdateLifecycle
+    },
   } as unknown as Context
 
   apply(ctx, options.config ?? testConfig)
   if (tray === undefined) throw new Error('Update tray item was not registered.')
+  if (updates === undefined) throw new Error('Update service was not provided.')
   return {
     statePath,
     tray,
@@ -101,6 +112,7 @@ async function createHarness(options: {
     downloadAndOpen,
     refresh,
     registrationDispose,
+    updates,
     dispose: async () => { await disposer?.() },
   }
 }
@@ -126,6 +138,29 @@ describe('desktop update Host plugin', () => {
     const harness = await createHarness({ packaged: false, locale: 'zh' })
 
     expect(harness.tray.label()).toBe('检查更新…')
+
+    await harness.dispose()
+  })
+
+  it('shares safe status, checks, and exact-version installation with settings', async () => {
+    const harness = await createHarness({
+      packaged: false,
+      request: async () => versionResponse('2.1.0'),
+    })
+
+    expect(harness.updates.snapshot()).toEqual({
+      status: 'idle', currentVersion: '2.0.0', canInstall: true,
+    })
+    await expect(harness.updates.checkNow()).resolves.toEqual({
+      status: 'update-available',
+      currentVersion: '2.0.0',
+      latestVersion: '2.1.0',
+      canInstall: true,
+    })
+    await expect(harness.updates.install('2.2.0')).rejects.toThrow('not available')
+    await harness.updates.install('2.1.0')
+    expect(harness.confirmDownload).toHaveBeenCalledWith('2.1.0')
+    expect(harness.downloadAndOpen).not.toHaveBeenCalled()
 
     await harness.dispose()
   })

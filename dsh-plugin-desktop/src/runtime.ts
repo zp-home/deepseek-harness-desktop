@@ -89,7 +89,7 @@ export interface DesktopNotification {
 export interface DesktopUpdateAdapter {
   /** Whether the running executable came from an Electron package. */
   readonly isPackaged: boolean
-  /** Whether this platform has a fixed installer download endpoint. */
+  /** Whether this platform has a fixed official GitHub Release asset. */
   readonly canDownload: boolean
   /** Installed desktop product version. */
   readonly currentVersion: string

@@ -9,11 +9,8 @@ import { compareSemVerVersions, parseSemVer } from './update-checker.ts'
 /** Desktop platforms with a fixed installer download endpoint. */
 export type DesktopDownloadPlatform = 'darwin' | 'win32'
 
-/** Fixed download endpoints that record one user-confirmed installer download. */
-export const DESKTOP_DOWNLOAD_URLS: Readonly<Record<DesktopDownloadPlatform, string>> = {
-  darwin: 'https://www.dshdesktop.cn/api/downloads/mac',
-  win32: 'https://www.dshdesktop.cn/api/downloads/windows',
-}
+/** Fixed repository used for release metadata and installer assets. */
+export const DESKTOP_RELEASE_REPOSITORY = 'anywhere-labs/deepseek-harness-desktop'
 
 /** Maximum accepted installer size, in bytes. */
 export const MAX_UPDATE_DOWNLOAD_BYTES = 1024 * 1024 * 1024
@@ -110,7 +107,7 @@ export async function downloadDesktopUpdate(options: DownloadDesktopUpdateOption
 
   let response: Response
   try {
-    response = await options.request(DESKTOP_DOWNLOAD_URLS[platform], {
+    response = await options.request(desktopUpdateUrl(platform, options.version), {
       method: 'GET',
       cache: 'no-store',
       redirect: 'follow',
@@ -162,6 +159,16 @@ export function desktopUpdateFilename(platform: DesktopDownloadPlatform, version
   const extension = platform === 'darwin' ? 'dmg' : 'exe'
   const platformName = platform === 'darwin' ? 'mac' : 'windows'
   return `DSH-Desktop-${version}-${platformName}.${extension}`
+}
+
+/** Construct the exact official GitHub Release asset URL for one validated version. */
+export function desktopUpdateUrl(platform: DesktopDownloadPlatform, version: string): string {
+  validatedPlatform(platform)
+  validatedVersion(version)
+  const asset = platform === 'darwin'
+    ? `DSH.Desktop-${version}-universal.dmg`
+    : `DSH-Desktop-${version}-x64-Setup.exe`
+  return `https://github.com/${DESKTOP_RELEASE_REPOSITORY}/releases/download/v${version}/${asset}`
 }
 
 /** Remember a downloaded installer until an upgraded application resolves its retention. */

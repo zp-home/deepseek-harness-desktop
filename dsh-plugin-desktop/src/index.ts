@@ -32,6 +32,8 @@ import {
   DESKTOP_PROFILE_SELECT_PATH,
   DESKTOP_SETTINGS_PATH,
   DESKTOP_TERMINAL_OPEN_PATH,
+  DESKTOP_UPDATE_CHECK_PATH,
+  DESKTOP_UPDATE_INSTALL_PATH,
 } from './desktop-settings-contract.ts'
 import {
   handleDesktopMarketSelectRequest,
@@ -39,6 +41,8 @@ import {
   handleDesktopProfileSelectRequest,
   handleDesktopSettingsRequest,
   handleDesktopTerminalOpenRequest,
+  handleDesktopUpdateCheckRequest,
+  handleDesktopUpdateInstallRequest,
 } from './desktop-settings-route.ts'
 import type {} from './desktop-settings-controller.ts'
 import { desktopBootRecoveryInjections } from './desktop-boot-recovery.ts'
@@ -182,6 +186,8 @@ export function apply(ctx: Context, config: Config): void {
       [DESKTOP_PROFILE_SELECT_PATH, handleDesktopProfileSelectRequest],
       [DESKTOP_MARKET_SELECT_PATH, handleDesktopMarketSelectRequest],
       [DESKTOP_TERMINAL_OPEN_PATH, handleDesktopTerminalOpenRequest],
+      [DESKTOP_UPDATE_CHECK_PATH, handleDesktopUpdateCheckRequest],
+      [DESKTOP_UPDATE_INSTALL_PATH, handleDesktopUpdateInstallRequest],
     ] as const
     for (const [path, handler] of settingsRoutes) {
       ctx.effect(

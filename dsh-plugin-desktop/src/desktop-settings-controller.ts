@@ -13,7 +13,10 @@ import type {
   DesktopSettingsMarketView,
   DesktopSettingsProfileView,
   DesktopSettingsResponse,
+  DesktopSettingsUpdateView,
   DesktopTerminalOpenResponse,
+  DesktopUpdateCheckResponse,
+  DesktopUpdateInstallResponse,
 } from './desktop-settings-contract.ts'
 
 /** Launcher capabilities used without exposing their filesystem roots. */
@@ -30,6 +33,12 @@ export interface DesktopSettingsControllerBootstrap {
   scheduleRestart(): void
   /** Open the launcher-owned DSH terminal. */
   openTerminal(): void
+  /** Read the shared update coordinator without starting network activity. */
+  readUpdates(): DesktopSettingsUpdateView
+  /** Run a timeout-bounded version check through the shared coordinator. */
+  checkUpdates(): Promise<DesktopSettingsUpdateView>
+  /** Start native confirmation and installation after the HTTP response. */
+  installUpdate(version: string): void
 }
 
 /** A persisted response plus work that must run only after `res.end()`. */
@@ -83,6 +92,7 @@ export class DesktopSettingsController {
         this.bootstrap.profiles.list().map(projectDesktopSettingsProfile),
       ),
       market: projectMarket(this.bootstrap.readMarket(), this.effectiveMarket),
+      updates: this.bootstrap.readUpdates(),
     })
   }
 
@@ -126,6 +136,24 @@ export class DesktopSettingsController {
   openTerminal(): DesktopTerminalOpenResponse {
     this.bootstrap.openTerminal()
     return Object.freeze({ accepted: true })
+  }
+
+  /** Check the fixed release service without opening a second native result dialog. */
+  checkUpdates(): Promise<DesktopUpdateCheckResponse> {
+    return this.bootstrap.checkUpdates()
+  }
+
+  /** Accept only the exact version currently held by the shared coordinator. */
+  installUpdate(version: string): DesktopSettingsPostResponse<DesktopUpdateInstallResponse> {
+    const updates = this.bootstrap.readUpdates()
+    if (!updates.canInstall || updates.status !== 'update-available'
+      || updates.latestVersion !== version) {
+      throw new Error('dsh-plugin-desktop: update version is not available for installation')
+    }
+    return Object.freeze({
+      response: Object.freeze({ accepted: true }),
+      afterResponse: () => { this.bootstrap.installUpdate(version) },
+    })
   }
 }
 

@@ -488,7 +488,7 @@ export class ElectronDesktopRuntime implements DesktopRuntime {
     nativeNotification.show()
   }
 
-  /** Ask before making the fixed download endpoint's counted request. */
+  /** Ask before downloading the fixed official GitHub Release asset. */
   private async confirmUpdateDownload(version: string): Promise<boolean> {
     const result = await dialog.showMessageBox({
       type: 'info',

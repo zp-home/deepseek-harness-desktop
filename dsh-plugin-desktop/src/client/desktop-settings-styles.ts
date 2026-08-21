@@ -151,6 +151,26 @@ const CSS = `
 }
 .dshDesktopSettingsButton:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
 .dshDesktopSettingsButton:disabled { cursor: default; opacity: .55; }
+.dshDesktopSettingsButtonPrimary {
+  border-color: var(--dsw-alias-brand-primary);
+  background: var(--dsw-alias-brand-primary);
+  color: var(--dsw-alias-label-primary-foreground);
+}
+.dshDesktopSettingsButtonPrimary:hover:not(:disabled) { opacity: .88; }
+.dshDesktopSettingsUpdateRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+.dshDesktopSettingsUpdateCopy { display: grid; gap: 3px; min-width: 0; font-size: 13px; }
+.dshDesktopSettingsUpdateCopy .dshDesktopSettingsHint { margin: 0; }
+.dshDesktopSettingsUpdateActions { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 8px; }
 .dshDesktopSettingsTerminalAction {
   display: flex;
   align-items: center;
@@ -234,6 +254,9 @@ const CSS = `
   .dshDesktopSettingsChoice,
   .dshDesktopSettingsToggleRow { align-items: flex-start; }
   .dshDesktopSettingsForm { align-items: stretch; flex-direction: column; }
+  .dshDesktopSettingsUpdateRow { align-items: stretch; flex-direction: column; }
+  .dshDesktopSettingsUpdateActions { width: 100%; }
+  .dshDesktopSettingsUpdateActions .dshDesktopSettingsButton { flex: 1 1 auto; }
 }
 `
 
