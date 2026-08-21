@@ -8,8 +8,8 @@ granting blanket approval to upstream Issues or pull requests.
 
 Snapshot: 2026-08-21, official `master` at `7ff6c98bc561d424fa8d2b65f8c3ba840f37f566`.
 The snapshot contains 101 open Issues and 39 open pull requests. Fork `master`
-accepted the latest Profile recovery in PR #13; the runtime upgrade is being
-validated on `upgrade/dsh-0.1.1-rc1` before it reaches `master`.
+is 34 commits ahead and 0 behind after Profile recovery PR #13 and the
+`0.1.1-rc.1` runtime upgrade PR #14 were merged.
 
 ## Decision policy
 
@@ -31,7 +31,7 @@ validated on `upgrade/dsh-0.1.1-rc1` before it reaches `master`.
 ## Upstream version decision
 
 The user approved moving the fork from rc8 to the latest published DSH runtime
-on 2026-08-21. The upgrade branch pins `0.1.1-rc.1` at submodule commit
+on 2026-08-21. Fork `master` pins `0.1.1-rc.1` at submodule commit
 `528c682e061696f5a160f363f236ecbf53cbd006` and upgrades the complete published
 package family together; it does not claim upstream ancestry while silently
 downgrading manifests into an unsupported hybrid.
@@ -42,7 +42,7 @@ The nine new official commits have been split and audited:
   upgrade to the coherent `0.1.1-rc.1` package family.
 - `d17c7d2f81` is already covered by fork PR #10.
 - `7686b524c2` contains launcher module preservation and macOS reveal behavior;
-  the upgrade branch combines it with the fork's localized native menu.
+  fork `master` combines it with the fork's localized native menu.
 - `73e5fa9910` adds safe Web-profile creation; its required app-boot functions
   are accepted with focused Profile tests and atomic staging cleanup.
 - `ba59b93e38` adds persisted Market provider selection. The Desktop boundary is
@@ -72,26 +72,24 @@ response-language, trajectory localization, and node-pty packaging fixes.
   profile selection without weakening retained-reference lifecycle guards.
 - Adapted only the selectable-Profile recovery part of official PR #209 in fork
   PR #13. Its five CI jobs passed; unrelated SIGTERM behavior was excluded.
+- Upgraded DSH, the source submodule, the complete published package family,
+  Yarn lockfile, and every retained patch locator to `0.1.1-rc.1` in fork PR
+  #14. Safe Web-profile creation, persisted Market selection, launcher-module
+  preservation, and macOS reveal were integrated without dropping fork fixes.
+- PR #14 passed all five GitHub jobs, including the Windows installer and
+  portable archive, macOS smoke artifact, full check, and pinned-core check.
+  Locally, immutable install, type checking, 96 focused tests, 701 full-suite
+  tests, 183 package tests, and the 201-node runtime closure passed. Six
+  symlink tests could not run because this host denies symlink creation.
 - Disabled pushes to the official repository through the `upstream` remote.
 
 ### In progress
 
-- Upgrade DSH and every published runtime package from `0.1.0-rc.8` to
-  `0.1.1-rc.1`, including the pinned source submodule and Yarn patch locators.
-- Validate official safe Web-profile creation, persisted Market selection,
-  launcher-module preservation, and macOS reveal alongside retained fork fixes.
-- Local immutable install, 96 focused tests, and type checking pass. The full
-  Desktop suite passes 701 tests and skips 11; its remaining six failures are
-  environment-only `EPERM` results because this Windows host cannot create test
-  symlinks. Windows packaging preflight passes 183 tests and validates a
-  201-node runtime closure, but the local Electron extraction is held by an
-  external `default_app.asar` file lock. GitHub CI remains the required matrix
-  and artifact gate.
+- Keep this ledger synchronized as high-impact Issues and pull requests are
+  audited or implemented.
 
 ### Next
 
-- Open a fork pull request targeting `master`, require general, Windows, macOS,
-  and upstream-submodule checks, then merge only when all required jobs pass.
 - Audit Issue #449 as two decisions: plugin descriptions are a useful UX
   candidate; adding catalog sources still requires supply-chain ownership review.
 - Evaluate PR #266 for the Windows restricted sandbox only after measuring its
@@ -119,7 +117,7 @@ response-language, trajectory localization, and node-pty packaging fixes.
 | Issue | Status | Decision |
 | ---: | --- | --- |
 | 401 | completed | The initial rc8 milestone shipped; Issue #448 now supersedes that runtime target. |
-| 448 | in-progress | Upgrade the coherent runtime/package family through a tested fork PR. Separate core self-update remains a later architecture decision. |
+| 448 | completed | The coherent runtime/package family shipped through fork PR #14. Separate core self-update remains a later architecture decision. |
 | 449 | pending-review | Descriptions are a positive UX candidate; extra catalogs require a separate trust and maintenance decision. |
 | 441 | completed | Covered by fork PR #5. |
 | 427 | completed | Covered by the corrected fork PR #7. |
