@@ -230,6 +230,44 @@ describe('published package surface', () => {
     }
   })
 
+  it('localizes the rc8 trajectory controls and thinking label', () => {
+    const patchPath = './patches/dsh-client-ui-trajectory@0.1.0-rc.8.patch'
+    const patchResolution = 'patch:@deepseek-ai/dsh-client-ui-trajectory@npm%3A0.1.0-rc.8#./patches/dsh-client-ui-trajectory@0.1.0-rc.8.patch'
+    const lockfile = readFileSync(new URL('yarn.lock', workspaceRoot), 'utf8')
+    expect(workspaceManifest.resolutions).toMatchObject({
+      '@deepseek-ai/dsh-client-ui-trajectory@npm:0.1.0-rc.8': patchResolution,
+      '@deepseek-ai/dsh-client-ui-trajectory@npm:^0.1.0-rc.8': patchResolution,
+    })
+    expect(lockfile).toContain(
+      '@deepseek-ai/dsh-client-ui-trajectory@patch:@deepseek-ai/dsh-client-ui-trajectory@npm%3A0.1.0-rc.8#./patches/dsh-client-ui-trajectory@0.1.0-rc.8.patch',
+    )
+    const patch = readFileSync(new URL(patchPath, workspaceRoot), 'utf8')
+    const installedClient = readFileSync(new URL(
+      'node_modules/@deepseek-ai/dsh-client-ui-trajectory/lib/client.js',
+      packageRoot,
+    ), 'utf8')
+    for (const marker of [
+      '"toolbar.duration": "时长"',
+      '"toolbar.useActualDuration": "使用实际时长"',
+      '"toolbar.useEqualWidth": "使用等宽操作"',
+      '"toolbar.turns": "轮次"',
+      '"toolbar.expandTurns": "展开轮次"',
+      '"toolbar.collapseTurns": "折叠轮次"',
+      '"toolbar.calls": "调用"',
+      '"toolbar.expandCalls": "展开调用"',
+      '"toolbar.collapseCalls": "折叠调用"',
+      '"detail.thinking": "思考过程"',
+      '"detail.thinking": "Thinking"',
+      'thinkingLabel: t("detail.thinking")',
+      'children: [thinkingLabel,',
+    ]) {
+      expect(patch).toContain(marker)
+      expect(installedClient).toContain(marker)
+    }
+    expect(installedClient.match(/^\s+thinkingLabel,\r?$/gmu)).toHaveLength(4)
+    expect(installedClient).not.toContain('children: ["Thinking",')
+  })
+
   it('keeps Desktop boot from opening an external browser and uses Electron Node mode for explicit helpers', () => {
     const patchPath = './patches/dsh-web-app@0.1.0-rc.8.patch'
     expect(workspaceManifest.resolutions).toMatchObject({

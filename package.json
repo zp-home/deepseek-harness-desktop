@@ -27,6 +27,8 @@
     "@deepseek-ai/dsh-client-ui-workspace@npm:^0.1.0-rc.8": "patch:@deepseek-ai/dsh-client-ui-workspace@npm%3A0.1.0-rc.8#./patches/dsh-client-ui-workspace@0.1.0-rc.8.patch",
     "@deepseek-ai/dsh-client-ui-settings-models@npm:0.1.0-rc.8": "patch:@deepseek-ai/dsh-client-ui-settings-models@npm%3A0.1.0-rc.8#./patches/dsh-client-ui-settings-models@0.1.0-rc.8.patch",
     "@deepseek-ai/dsh-client-ui-settings-models@npm:^0.1.0-rc.8": "patch:@deepseek-ai/dsh-client-ui-settings-models@npm%3A0.1.0-rc.8#./patches/dsh-client-ui-settings-models@0.1.0-rc.8.patch",
+    "@deepseek-ai/dsh-client-ui-trajectory@npm:0.1.0-rc.8": "patch:@deepseek-ai/dsh-client-ui-trajectory@npm%3A0.1.0-rc.8#./patches/dsh-client-ui-trajectory@0.1.0-rc.8.patch",
+    "@deepseek-ai/dsh-client-ui-trajectory@npm:^0.1.0-rc.8": "patch:@deepseek-ai/dsh-client-ui-trajectory@npm%3A0.1.0-rc.8#./patches/dsh-client-ui-trajectory@0.1.0-rc.8.patch",
     "@deepseek-ai/dsh-web-app@npm:0.1.0-rc.8": "patch:@deepseek-ai/dsh-web-app@npm%3A0.1.0-rc.8#./patches/dsh-web-app@0.1.0-rc.8.patch",
     "@deepseek-ai/dsh-web-app@npm:^0.1.0-rc.8": "patch:@deepseek-ai/dsh-web-app@npm%3A0.1.0-rc.8#./patches/dsh-web-app@0.1.0-rc.8.patch",
     "koffi@npm:^3.1.0": "3.1.5"

@@ -1729,7 +1729,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@deepseek-ai/dsh-client-ui-trajectory@npm:^0.1.0-rc.8":
+"@deepseek-ai/dsh-client-ui-trajectory@npm:0.1.0-rc.8":
   version: 0.1.0-rc.8
   resolution: "@deepseek-ai/dsh-client-ui-trajectory@npm:0.1.0-rc.8"
   dependencies:
@@ -1745,6 +1745,25 @@ __metadata:
     "@deepseek-ai/dsh-invariants": ^0.1.0-rc.8
     "@deepseek-ai/dsh-tools": ^0.1.0-rc.8
   checksum: 10c0/b2d4120748529a0557ce3604e1b50a66912910e99a59a4281fe1fb7332d7c395dce06d609969c0874b0f84e0e45ef9f15064dca3ab27b9e9448a9886db8029e9
+  languageName: node
+  linkType: hard
+
+"@deepseek-ai/dsh-client-ui-trajectory@patch:@deepseek-ai/dsh-client-ui-trajectory@npm%3A0.1.0-rc.8#./patches/dsh-client-ui-trajectory@0.1.0-rc.8.patch::locator=deepseek-harness-desktop%40workspace%3A.":
+  version: 0.1.0-rc.8
+  resolution: "@deepseek-ai/dsh-client-ui-trajectory@patch:@deepseek-ai/dsh-client-ui-trajectory@npm%3A0.1.0-rc.8#./patches/dsh-client-ui-trajectory@0.1.0-rc.8.patch::version=0.1.0-rc.8&hash=34b669&locator=deepseek-harness-desktop%40workspace%3A."
+  dependencies:
+    "@tanstack/react-virtual": "npm:^3.14.9"
+    diff: "npm:^9.0.0"
+  peerDependencies:
+    "@deepseek-ai/cordis": ^4.0.1
+    "@deepseek-ai/dsh-agent": ^0.1.0-rc.8
+    "@deepseek-ai/dsh-client-locale": ^0.1.0-rc.8
+    "@deepseek-ai/dsh-client-runtime": ^0.1.0-rc.8
+    "@deepseek-ai/dsh-client-ui-conversation": ^0.1.0-rc.8
+    "@deepseek-ai/dsh-compaction": ^0.1.0-rc.8
+    "@deepseek-ai/dsh-invariants": ^0.1.0-rc.8
+    "@deepseek-ai/dsh-tools": ^0.1.0-rc.8
+  checksum: 10c0/764ee7487d1a45dbaee89930efe8f0ca7526ce398ab997791c3df6e6ca8d67a2dc04a8965ec37a23c41b121937abf3e0e5432cbcb9ef369fa4a7bbf45d0616f7
   languageName: node
   linkType: hard
 
