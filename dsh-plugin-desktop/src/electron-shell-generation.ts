@@ -10,6 +10,7 @@ import {
   Tray,
 } from 'electron'
 import { formatDesktopExitCode } from './desktop-logger.ts'
+import { applicationNeedsReveal, revealApplication } from './electron-reveal.ts'
 import type {
   ElectronApplicationMenuRegistration,
   ElectronPlatformStrategy,
@@ -78,6 +79,9 @@ export class ElectronShellGeneration {
     this.window = window
 
     const show = (): void => { this.show() }
+    const activate = (): void => {
+      if (applicationNeedsReveal(window, platform.platform)) this.show()
+    }
     const clearAttention = (): void => { this.clearAttention() }
     const close = (event: Electron.Event): void => {
       if (this.options.isQuitting()) return
@@ -141,7 +145,8 @@ export class ElectronShellGeneration {
       }
     }
 
-    app.on('activate', show)
+    app.on('activate', activate)
+    if (platform.platform === 'darwin') app.on('did-become-active', activate)
     window.on('close', close)
     window.on('focus', clearAttention)
     window.on('page-title-updated', preserveBlankTitle)
@@ -166,7 +171,8 @@ export class ElectronShellGeneration {
     window.once('ready-to-show', show)
     let tray: Tray | undefined
     this.cleanupListeners = () => {
-      app.off('activate', show)
+      app.off('activate', activate)
+      if (platform.platform === 'darwin') app.off('did-become-active', activate)
       window.off('close', close)
       window.off('focus', clearAttention)
       window.off('page-title-updated', preserveBlankTitle)
@@ -199,9 +205,7 @@ export class ElectronShellGeneration {
     const window = this.window
     if (window === undefined || window.isDestroyed()) return
     this.clearAttention()
-    if (window.isMinimized()) window.restore()
-    window.show()
-    window.focus()
+    revealApplication(window, this.options.platform.platform)
   }
 
   notifyAttention(notification: DesktopNotification): void {
