@@ -6,10 +6,10 @@ This is the decision ledger for `zp-home/deepseek-harness-desktop`. It tracks
 the open work reported against `anywhere-labs/deepseek-harness-desktop` without
 granting blanket approval to upstream Issues or pull requests.
 
-Snapshot: 2026-08-21, official `master` at `a4865e2c03a8ec1e6945797196ce4d64e3202360`.
-The snapshot contains 104 open Issues and 39 open pull requests. The active
-fork `master` contains this official commit and is 44 commits ahead and 0
-behind after fork PR #18 was merged.
+Snapshot: 2026-08-21, official `master` at `8dbb94428e17dd99eb9ed66ea6e6885968fd5dd1`.
+The snapshot contains 103 open Issues and 38 open pull requests. Fork `master`
+is 46 commits ahead and 16 behind while the audited synchronization branch is
+being validated for fork PR #20.
 
 ## Decision policy
 
@@ -66,6 +66,37 @@ subagent header navigation, and multiline `ask_user_question` answers. These
 are upstream runtime behaviors; the fork did not add a separate model-request
 or message-semantics customization to obtain them.
 
+## Latest Desktop synchronization
+
+The 16 official Desktop commits from `a4865e2c03` through `8dbb94428e` are
+accepted at the Desktop boundary after focused review. They add:
+
+- a private loopback-only settings API, notification master switch, selectable
+  Market setting, and Profile creation from the tray;
+- healthy Profile checkpoints, one-attempt boot recovery, restored Profile
+  materialization, and package-version overlays;
+- a terminal recovery action for plugin boot failures; and
+- the constrained dshmarket 1.17.1 compatibility path and official Chinese
+  trajectory labels.
+
+The settings API requires exact loopback Host/Origin checks, same-origin fetch
+metadata or referrers for reads, JSON-only writes, and a 16 KiB request limit.
+Profile checkpoints use atomic writes, bounded files, hashes, regular-file and
+non-symlink checks, and one recovery attempt per failed generation. POSIX keeps
+strict `0700`/`0600` enforcement; Windows omits modes it cannot represent while
+retaining the type, symlink, size, and hash gates. Recovery remains fail closed.
+
+External Market installation remains disabled unless the user selects the
+`dsh-market` provider. That compatibility path accepts one npm package name at
+one exact version and has a healthy-Profile checkpoint fallback. It does not
+restore arbitrary `runPlugin(['add'])`, accept Git/link/multiple/floating
+targets, or authorize new catalogs. A per-install receipt WAL remains required
+before this path can be treated as fully hardened or generalized.
+
+Official PR #451 is now integrated upstream. The fork keeps its existing
+component-prop trajectory translation because it avoids module-level mutable
+translation state while covering the same Chinese labels.
+
 ## Todo
 
 ### Completed
@@ -120,6 +151,9 @@ or message-semantics customization to obtain them.
 
 ### In progress
 
+- Validate and merge fork PR #20, which synchronizes official Desktop
+  `8dbb94428e` while retaining the fork's security, localization, Windows, and
+  packaging adaptations.
 - Keep this ledger synchronized as high-impact Issues and pull requests are
   audited or implemented.
 
@@ -132,6 +166,8 @@ or message-semantics customization to obtain them.
   protected subprocess and converge the recovery transaction.
 - Adapt Issue #334 only through bounded, secret-redacted subprocess diagnostics;
   do not expose arbitrary pnpm output directly through the Market API.
+- Add a durable per-install receipt WAL before expanding the constrained
+  dshmarket exact-version compatibility path.
 - Consider Issue #453 as a settings UI-only search and clear-selection change,
   without changing provider discovery or model request semantics.
 - Consolidate duplicate plugin-install and Linux-packaging reports before
@@ -200,7 +236,7 @@ All other open Issues remain `pending-review`:
 | PR | Status | Decision |
 | ---: | --- | --- |
 | 428 | already-covered | Fork PR #7 implements the valid lifecycle-safe subset. |
-| 451 | already-covered | Fork PR #5 already localizes these rc.1 trajectory and Thinking labels. Do not duplicate the patch while official CI is failing; reassess replacement only after upstream merges. |
+| 451 | official-integrated | Official labels are in `8dbb94428e`; the fork retains its component-prop translation implementation to avoid module-level mutable state. |
 | 452 | ancestry-integrated | The official test-expectation alignment commit is included in fork PR #18; equivalent fork behavior was already covered. |
 | 349 | completed | Fork PR #18 adapts the intent with structured YAML parsing, bounded reads, package-name filtering, explicit consent, and recovery integration. |
 | 445 | rejected | Treating a truncated 300-item provider response as a complete scan creates false catalog semantics; require explicit partial-catalog support. |

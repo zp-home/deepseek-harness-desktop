@@ -96,6 +96,7 @@ function createHarness(
     exportDiagnostics: async () => {},
     pickDirectory,
     validateDirectory,
+    promptText: async () => null,
     reportRendererBoot: rendererBoot,
     setLocalePreference,
     setThemeSource,
