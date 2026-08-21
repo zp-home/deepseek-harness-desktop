@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
 import {
+  blockedBuildsHint,
   clearElectronRunAsNode,
   runDesktopDshCli,
   withDefaultDesktopProfile,
@@ -177,6 +178,98 @@ describe('packaged dsh bootstrap', () => {
       expect(existsSync(statePath)).toBe(false)
       expect(process.exitCode).toBe(1)
     } finally {
+      process.exitCode = originalExitCode
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('builds a bounded allowBuilds hint from the parsed workspace document', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-desktop-blocked-builds-hint-'))
+    try {
+      writeFileSync(join(root, 'pnpm-workspace.yaml'), [
+        'allowBuilds:',
+        '  node-pty: set this to true or false',
+        '  "@scope/native-addon": "set this to true or false"',
+        '  already-reviewed: true',
+        'other:',
+        '  ignored: set this to true or false',
+        '',
+      ].join('\n'))
+
+      const hint = await blockedBuildsHint(root)
+
+      expect(hint).toContain('require explicit approval')
+      expect(hint).toContain('After recovery, add only trusted entries')
+      expect(hint).toContain(join(root, 'pnpm-workspace.yaml'))
+      expect(hint).toContain('    node-pty: true')
+      expect(hint).toContain('    @scope/native-addon: true')
+      expect(hint).not.toContain('already-reviewed')
+      expect(hint).not.toContain('ignored')
+      expect(hint).toContain('Unapproved scripts remain blocked')
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('does not turn malformed, unsafe, or oversized workspace data into guidance', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-desktop-blocked-builds-invalid-'))
+    const workspacePath = join(root, 'pnpm-workspace.yaml')
+    try {
+      expect(await blockedBuildsHint(join(root, 'missing'))).toBeUndefined()
+
+      writeFileSync(workspacePath, 'allowBuilds: [unterminated')
+      expect(await blockedBuildsHint(root)).toBeUndefined()
+
+      writeFileSync(workspacePath, [
+        'allowBuilds:',
+        '  "unsafe\\u001b[31m": set this to true or false',
+        '  ordinary-package: false',
+        '',
+      ].join('\n'))
+      expect(await blockedBuildsHint(root)).toBeUndefined()
+
+      writeFileSync(workspacePath, `# ${'x'.repeat(64 * 1024)}\nallowBuilds:\n  node-pty: set this to true or false\n`)
+      expect(await blockedBuildsHint(root)).toBeUndefined()
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('prints blocked-build guidance before restoring a failed terminal install', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-desktop-terminal-allowbuilds-'))
+    const homeDir = join(root, 'home')
+    const profileDir = join(homeDir, 'profiles', 'desktop')
+    const statePath = desktopInstallRecoveryStatePath(join(root, 'user-data'))
+    const manifestPath = join(profileDir, 'package.json')
+    const workspacePath = join(profileDir, 'pnpm-workspace.yaml')
+    const originalExitCode = process.exitCode
+    const stderrWrite = vi.spyOn(process.stderr, 'write').mockReturnValue(true)
+    try {
+      mkdirSync(profileDir, { recursive: true })
+      const originalManifest = JSON.stringify({ dependencies: {} })
+      const originalWorkspace = 'packages:\n  - .\n'
+      writeFileSync(manifestPath, originalManifest)
+      writeFileSync(workspacePath, originalWorkspace)
+
+      await runDesktopDshCli({
+        DSH_HOME: homeDir,
+        DSH_DESKTOP_DEFAULT_PROFILE: 'desktop',
+        [DESKTOP_INSTALL_RECOVERY_STATE_ENV]: statePath,
+      }, async () => {
+        writeFileSync(manifestPath, JSON.stringify({ dependencies: { 'broken-plugin': '0.0.0' } }))
+        writeFileSync(workspacePath, 'allowBuilds:\n  node-pty: set this to true or false\n')
+        process.exit(1)
+      }, [process.execPath, '/app/desktop-cli.js', 'plugin', 'add', 'broken-plugin'])
+
+      expect(readFileSync(manifestPath, 'utf8')).toBe(originalManifest)
+      expect(readFileSync(workspacePath, 'utf8')).toBe(originalWorkspace)
+      expect(existsSync(statePath)).toBe(false)
+      expect(process.exitCode).toBe(1)
+      const written = stderrWrite.mock.calls.map(call => String(call[0])).join('')
+      expect(written).toContain('pnpm blocked dependency build scripts')
+      expect(written).toContain('    node-pty: true')
+    } finally {
+      stderrWrite.mockRestore()
       process.exitCode = originalExitCode
       rmSync(root, { recursive: true, force: true })
     }
