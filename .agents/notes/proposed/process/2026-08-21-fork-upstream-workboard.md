@@ -7,7 +7,7 @@ the open work reported against `anywhere-labs/deepseek-harness-desktop` without
 granting blanket approval to upstream Issues or pull requests.
 
 Snapshot: 2026-08-21, official `master` at `d457d790295e727bbb1fc20e398da602f521fd64`.
-The snapshot contains 99 open Issues and 38 open pull requests.
+The snapshot contains 99 open Issues and 39 open pull requests.
 
 ## Decision policy
 
@@ -40,6 +40,8 @@ The snapshot contains 99 open Issues and 38 open pull requests.
   correcting the upstream proposal's multi-service ownership problem.
 - Adapted official PR #121 in fork PR #8 with exact declared/delivered update
   byte validation, broader header coverage, and partial-file cleanup tests.
+- Adapted official PR #122 in fork PR #10 so orderly restart disposal completes
+  profile selection without weakening retained-reference lifecycle guards.
 - Disabled pushes to the official repository through the `upstream` remote.
 
 ### In progress
@@ -48,7 +50,6 @@ The snapshot contains 99 open Issues and 38 open pull requests.
 
 ### Next
 
-- Audit PR #122 for profile switching after restart disposal.
 - Adapt only the profile recovery portion of PR #209; do not inherit unrelated
   SIGTERM behavior.
 - Evaluate PR #266 for the Windows restricted sandbox only after measuring its
@@ -97,7 +98,7 @@ All other open Issues remain `pending-review`:
 | ---: | --- | --- |
 | 428 | already-covered | Fork PR #7 implements the valid lifecycle-safe subset. |
 | 121 | completed | Adapted with exact declared/delivered byte matching in fork PR #8. |
-| 122 | next-audit | Small lifecycle fix, but disposal semantics need confirmation. |
+| 122 | completed | Adapted with initial and retry disposal-path tests in fork PR #10. |
 | 209 | future-adapt | Take only selectable-profile recovery, excluding unrelated SIGTERM work. |
 | 266 | future-validation | Potential sandbox fix; size and real packaged behavior are not accepted yet. |
 | 155 | deferred-core | Provider request/health/usage customization creates long-term protocol coupling. |
@@ -108,7 +109,7 @@ All other open Issues remain `pending-review`:
 
 All other open pull requests remain `pending-review`:
 
-`445, 440, 426, 422, 358, 355, 350, 349, 342, 281, 278, 277, 270, 251, 224,
+`446, 445, 440, 426, 422, 358, 355, 350, 349, 342, 281, 278, 277, 270, 251, 224,
 211, 196, 192, 184, 130, 126, 124, 114, 87`.
 
 ## Status vocabulary
