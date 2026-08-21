@@ -132,7 +132,7 @@ try {
         dshBootstrapPath: fileURLToPath(new URL('../lib/desktop-cli.js', import.meta.url)),
         installRecoveryStatePath: join(home, 'plugin-install-recovery', 'state.json'),
         generationId: 'profile-smoke-generation',
-        externalMarketInstallEnabled: false,
+        externalMarketInstallEnabled: prepared.market.effective === 'dsh-market',
       })
       await host.plugin(DesktopProfileService, {
         current: {
