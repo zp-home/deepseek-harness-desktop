@@ -11,6 +11,8 @@ import {
   handleDesktopProfileSelectRequest,
   handleDesktopSettingsRequest,
   handleDesktopTerminalOpenRequest,
+  handleDesktopUpdateCheckRequest,
+  handleDesktopUpdateInstallRequest,
   desktopSettingsRouteConstants,
 } from '../src/desktop-settings-route.ts'
 import type { DesktopProfileSummary } from '../src/profile-manager.ts'
@@ -42,6 +44,12 @@ const BROKEN: DesktopProfileSummary = {
   problem: 'failed to read /private/profiles/broken/package.json',
 }
 
+const UPDATES = {
+  status: 'idle' as const,
+  currentVersion: '2.0.2',
+  canInstall: true,
+}
+
 function market(
   requested: DesktopMarketSnapshot['requested'] = 'disabled',
   effective: DesktopMarketSnapshot['effective'] = requested,
@@ -64,6 +72,9 @@ function bootstrap(
     selectMarket: async provider => market(provider),
     scheduleRestart: () => {},
     openTerminal: () => {},
+    readUpdates: () => UPDATES,
+    checkUpdates: async () => UPDATES,
+    installUpdate: () => {},
     ...overrides,
   }
 }
@@ -129,6 +140,7 @@ describe('desktop settings controller', () => {
         { name: 'broken', exists: true, webCapable: false, selectable: false },
       ],
       market: { requested: 'disabled', effective: 'disabled', legacyDefaulted: false },
+      updates: UPDATES,
     })
     expect(JSON.stringify(controller.read())).not.toContain('/private')
     expect(JSON.stringify(controller.read())).not.toContain('private-bundle')
@@ -155,6 +167,7 @@ describe('desktop settings controller', () => {
         { name: 'work', exists: true, webCapable: true, selectable: true },
       ],
       market: { requested: 'disabled', effective: 'disabled', legacyDefaulted: false },
+      updates: UPDATES,
     })
     expect(create).toHaveBeenCalledWith('work')
     expect(persistProfileSelection).not.toHaveBeenCalled()
@@ -241,6 +254,29 @@ describe('desktop settings controller', () => {
     expect(controller.openTerminal()).toEqual({ accepted: true })
     expect(openTerminal).toHaveBeenCalledOnce()
   })
+
+  it('checks updates and defers only a freshly verified exact install', async () => {
+    const available = {
+      status: 'update-available' as const,
+      currentVersion: '2.0.2',
+      latestVersion: '2.1.0',
+      canInstall: true,
+    }
+    const installUpdate = vi.fn()
+    const controller = new DesktopSettingsController(bootstrap({
+      readUpdates: () => available,
+      checkUpdates: async () => available,
+      installUpdate,
+    }))
+
+    await expect(controller.checkUpdates()).resolves.toEqual(available)
+    const operation = controller.installUpdate('2.1.0')
+    expect(operation.response).toEqual({ accepted: true })
+    expect(installUpdate).not.toHaveBeenCalled()
+    operation.afterResponse?.()
+    expect(installUpdate).toHaveBeenCalledWith('2.1.0')
+    expect(() => controller.installUpdate('2.2.0')).toThrow('not available')
+  })
 })
 
 describe('desktop settings HTTP boundary', () => {
@@ -297,6 +333,7 @@ describe('desktop settings HTTP boundary', () => {
         { name: 'work', exists: true, webCapable: true, selectable: true },
       ],
       market: { requested: 'disabled', effective: 'disabled', legacyDefaulted: false },
+      updates: UPDATES,
     })
     expect(create).toHaveBeenCalledWith('work')
   })
@@ -429,6 +466,41 @@ describe('desktop settings HTTP boundary', () => {
       expect(rejected.statusCode).toBe(req.headers.origin === ORIGIN ? 400 : 403)
     }
     expect(openTerminal).toHaveBeenCalledOnce()
+  })
+
+  it('checks updates and starts only the exact verified version after responding', async () => {
+    const available = {
+      status: 'update-available' as const,
+      currentVersion: '2.0.2',
+      latestVersion: '2.1.0',
+      canInstall: true,
+    }
+    const installUpdate = vi.fn()
+    const controller = new DesktopSettingsController(bootstrap({
+      readUpdates: () => available,
+      checkUpdates: async () => available,
+      installUpdate,
+    }))
+    const checked = response()
+    const installed = response()
+
+    await handleDesktopUpdateCheckRequest(jsonRequest({}), checked, ORIGIN, controller)
+    await handleDesktopUpdateInstallRequest(jsonRequest({ version: '2.1.0' }), installed, ORIGIN, controller)
+
+    expect(checked.statusCode).toBe(200)
+    expect(JSON.parse(checked.body)).toEqual(available)
+    expect(installed.statusCode).toBe(202)
+    expect(JSON.parse(installed.body)).toEqual({ accepted: true })
+    expect(installUpdate).not.toHaveBeenCalled()
+    await new Promise<void>(resolve => { setImmediate(resolve) })
+    expect(installUpdate).toHaveBeenCalledWith('2.1.0')
+
+    for (const body of [{ version: '2.2.0' }, { version: 'v2.1.0' }, { version: '2.1.0', url: 'https://evil.test' }]) {
+      const rejected = response()
+      await handleDesktopUpdateInstallRequest(jsonRequest(body), rejected, ORIGIN, controller)
+      expect(rejected.statusCode).toBe(body.version === '2.2.0' ? 409 : 400)
+    }
+    expect(installUpdate).toHaveBeenCalledOnce()
   })
 
   it('reports terminal launch failures without exposing the native cause', async () => {

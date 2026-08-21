@@ -8,6 +8,7 @@ import {
   parseDesktopActionAcceptance,
   parseDesktopRestartAcceptance,
   parseDesktopSettingsView,
+  parseDesktopUpdateView,
   type DesktopSettingsView,
 } from '../src/client/desktop-settings-api.ts'
 import {
@@ -24,6 +25,7 @@ const VIEW: DesktopSettingsView = {
     { name: 'headless', exists: true, webCapable: false, selectable: false },
   ],
   market: { requested: 'disabled', effective: 'disabled', legacyDefaulted: true },
+  updates: { status: 'idle', currentVersion: '2.0.2', canInstall: true },
 }
 
 function json(value: unknown, status = 200): Response {
@@ -45,6 +47,14 @@ describe('Desktop settings API', () => {
     expect(parseDesktopRestartAcceptance({ accepted: true, restartRequired: false }))
       .toEqual({ accepted: true, restartRequired: false })
     expect(() => parseDesktopRestartAcceptance({ accepted: true })).toThrow('invalid Desktop restart response')
+    expect(parseDesktopUpdateView({
+      status: 'update-available', currentVersion: '2.0.2', latestVersion: '2.1.0', canInstall: true,
+    })).toEqual({
+      status: 'update-available', currentVersion: '2.0.2', latestVersion: '2.1.0', canInstall: true,
+    })
+    expect(() => parseDesktopUpdateView({
+      status: 'update-available', currentVersion: '2.0.2', canInstall: true,
+    })).toThrow('invalid Desktop update response')
     expect(parseDesktopActionAcceptance({ accepted: true })).toBeUndefined()
     expect(() => parseDesktopActionAcceptance({ accepted: true, detail: 'extra' }))
       .toThrow('invalid Desktop action response')
@@ -53,7 +63,10 @@ describe('Desktop settings API', () => {
   it('uses the strict same-origin routes and request bodies', async () => {
     const fetcher = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       const path = String(input)
-      if (path === desktopSettingsPaths.terminalOpen) return json({ accepted: true })
+      if (path === desktopSettingsPaths.terminalOpen || path === desktopSettingsPaths.updateInstall) {
+        return json({ accepted: true })
+      }
+      if (path === desktopSettingsPaths.updateCheck) return json(VIEW.updates)
       return path === desktopSettingsPaths.settings || path === desktopSettingsPaths.profileCreate
         ? json(VIEW)
         : json({ accepted: true, restartRequired: true })
@@ -65,6 +78,8 @@ describe('Desktop settings API', () => {
     await expect(api.selectProfile('work')).resolves.toEqual({ accepted: true, restartRequired: true })
     await expect(api.selectMarket('community-market')).resolves.toEqual({ accepted: true, restartRequired: true })
     await expect(api.openTerminal()).resolves.toBeUndefined()
+    await expect(api.checkUpdates()).resolves.toEqual(VIEW.updates)
+    await expect(api.installUpdate('2.1.0')).resolves.toBeUndefined()
 
     expect(fetcher.mock.calls.map(call => call[0])).toEqual([
       desktopSettingsPaths.settings,
@@ -72,6 +87,8 @@ describe('Desktop settings API', () => {
       desktopSettingsPaths.profileSelect,
       desktopSettingsPaths.marketSelect,
       desktopSettingsPaths.terminalOpen,
+      desktopSettingsPaths.updateCheck,
+      desktopSettingsPaths.updateInstall,
     ])
     expect(fetcher.mock.calls[1]?.[1]).toMatchObject({
       method: 'POST',
@@ -85,6 +102,14 @@ describe('Desktop settings API', () => {
     expect(fetcher.mock.calls[4]?.[1]).toMatchObject({
       method: 'POST',
       body: JSON.stringify({}),
+    })
+    expect(fetcher.mock.calls[5]?.[1]).toMatchObject({
+      method: 'POST',
+      body: JSON.stringify({}),
+    })
+    expect(fetcher.mock.calls[6]?.[1]).toMatchObject({
+      method: 'POST',
+      body: JSON.stringify({ version: '2.1.0' }),
     })
   })
 

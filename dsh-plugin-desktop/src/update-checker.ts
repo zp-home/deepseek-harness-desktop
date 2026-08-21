@@ -1,10 +1,11 @@
-/** Headless version checks against the public DSH Desktop release service. */
+/** Headless version checks against the official DSH Desktop GitHub releases. */
 
-/** Public endpoint returning the latest stable DSH Desktop version. */
-export const DESKTOP_VERSION_ENDPOINT = 'https://www.dshdesktop.cn/api/desktop/version'
+/** GitHub API endpoint for the official Desktop repository's latest stable release. */
+export const DESKTOP_VERSION_ENDPOINT =
+  'https://api.github.com/repos/anywhere-labs/deepseek-harness-desktop/releases/latest'
 
 /** Maximum response body bytes accepted from the version service. */
-export const MAX_VERSION_RESPONSE_BYTES = 4 * 1024
+export const MAX_VERSION_RESPONSE_BYTES = 64 * 1024
 
 /** Strictly parsed SemVer components. Numeric components remain strings to avoid overflow. */
 export interface ParsedSemVer {
@@ -35,7 +36,7 @@ export interface UpdateCheckOptions {
   readonly request?: UpdateRequest
 }
 
-/** Successful comparison returned by the stable version service. */
+/** Successful comparison returned by the latest stable GitHub release. */
 export type UpdateCheckResult = {
   /** Whether the service reports a version newer than the installed application. */
   readonly status: 'up-to-date' | 'update-available'
@@ -85,7 +86,7 @@ export function compareSemVerVersions(left: string, right: string): number | nul
 }
 
 /**
- * Check the fixed DSH Desktop version endpoint for a newer stable release.
+ * Check the fixed official GitHub repository for a newer stable release.
  * @param options - installed version, caller-owned signal, and optional request adapter.
  * @returns a successful comparison, or null when any request or validation step fails.
  */
@@ -97,7 +98,10 @@ export async function checkForStableUpdate(
 
   const init: RequestInit = {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
     cache: 'no-store',
     redirect: 'error',
     ...(options.signal === undefined ? {} : { signal: options.signal }),
@@ -169,8 +173,12 @@ function parseVersionResponse(body: string): ParsedSemVer | null {
   } catch {
     return null
   }
-  if (!isRecord(value) || typeof value.version !== 'string') return null
-  return parseCanonicalStableVersion(value.version)
+  if (!isRecord(value)
+    || typeof value.tag_name !== 'string'
+    || value.draft !== false
+    || value.prerelease !== false) return null
+  const parsed = parseCanonicalStableVersion(value.tag_name.startsWith('v') ? value.tag_name.slice(1) : '')
+  return parsed !== null && value.tag_name === `v${parsed.version}` ? parsed : null
 }
 
 function parseCanonicalStableVersion(input: string): ParsedSemVer | null {

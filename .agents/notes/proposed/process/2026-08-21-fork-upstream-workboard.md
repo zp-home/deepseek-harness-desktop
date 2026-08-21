@@ -8,8 +8,8 @@ granting blanket approval to upstream Issues or pull requests.
 
 Snapshot: 2026-08-21, official `master` at `8dbb94428e17dd99eb9ed66ea6e6885968fd5dd1`.
 The snapshot contains 103 open Issues and 38 open pull requests. Fork `master`
-is 46 commits ahead and 16 behind while the audited synchronization branch is
-being validated for fork PR #20.
+contains this official commit and is 48 commits ahead and 0 behind after fork
+PR #20 was merged.
 
 ## Decision policy
 
@@ -148,12 +148,17 @@ translation state while covering the same Chinese labels.
   and provides an explicit-review command snippet. It never auto-authorizes a
   lifecycle or native script and never weakens recovery.
 - Disabled pushes to the official repository through the `upstream` remote.
+- Merged fork PR #20 at `da18eeab8f` after all five CI jobs passed. It integrates
+  official Desktop `8dbb94428e`, including the private settings surface, Profile
+  checkpoint/recovery, package overlays, and constrained dshmarket compatibility.
+- Adapted Profile checkpoint permissions for Windows without weakening file
+  type, symlink, size, hash, or fail-closed recovery checks.
 
 ### In progress
 
-- Validate and merge fork PR #20, which synchronizes official Desktop
-  `8dbb94428e` while retaining the fork's security, localization, Windows, and
-  packaging adaptations.
+- Add a Desktop settings update surface that checks the fixed official GitHub
+  Releases API and hands only a freshly verified exact version to the existing
+  confirmation-gated native installer flow.
 - Keep this ledger synchronized as high-impact Issues and pull requests are
   audited or implemented.
 
@@ -168,6 +173,9 @@ translation state while covering the same Chinese labels.
   do not expose arbitrary pnpm output directly through the Market API.
 - Add a durable per-install receipt WAL before expanding the constrained
   dshmarket exact-version compatibility path.
+- Define a fork-owned release channel and artifact-integrity policy before
+  `zp-home` publishes binaries or changes the updater away from official
+  `anywhere-labs` releases.
 - Consider Issue #453 as a settings UI-only search and clear-selection change,
   without changing provider discovery or model request semantics.
 - Consolidate duplicate plugin-install and Linux-packaging reports before
@@ -185,6 +193,8 @@ translation state while covering the same Chinese labels.
 - Do not partially downgrade the accepted `0.1.1-rc.1` package family or ship an
   unsupported mixed rc8/rc.1 runtime.
 - Do not add an unreviewed plugin catalog or external webview surface.
+- Do not silently fall back from validated official GitHub Release assets to
+  ModelScope, a mutable mirror, or a renderer-provided download URL.
 - Do not accept PR #445 as written. Reporting a provider's truncated 300-item
   response as a complete catalog silently corrupts search, categories, and
   install visibility. A later adaptation needs explicit partial-catalog state.

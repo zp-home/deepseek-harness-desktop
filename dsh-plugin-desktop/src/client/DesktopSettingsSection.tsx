@@ -44,6 +44,7 @@ export type DesktopSettingsSectionProps =
 
 type Translate = DesktopSettingsSectionProps['t']
 type BusyOperation = 'load' | 'create-profile' | 'select-profile' | 'select-market' | 'mode' | 'notification'
+  | 'check-updates' | 'install-update'
 type RestartState = 'none' | 'restarting' | 'required'
 
 function useScope<T>(scope: SettingsScope<T>) {
@@ -284,6 +285,29 @@ export function DesktopSettingsSection({
     void run('notification', async () => { await notificationSettings.set(field, checked) })
   }
 
+  const checkUpdates = (): void => {
+    void run('check-updates', async () => {
+      const updates = await api.checkUpdates()
+      setView(current => current === undefined ? current : { ...current, updates })
+    })
+  }
+
+  const installUpdate = (version: string): void => {
+    void run('install-update', async () => { await api.installUpdate(version) })
+  }
+
+  const updateStatus = view?.updates.status === 'up-to-date'
+    ? t('updateCurrent')
+    : view?.updates.status === 'update-available'
+      ? t('updateAvailable')
+      : view?.updates.status === 'downloading'
+        ? t('updateDownloading')
+        : view?.updates.status === 'checking'
+          ? t('checkingUpdates')
+          : view?.updates.status === 'error'
+            ? t('updateCheckFailed')
+            : t('updateNotChecked')
+
   return (
     <div className="dshDesktopSettings">
       <header className="dshDesktopSettingsHeader">
@@ -297,6 +321,52 @@ export function DesktopSettingsSection({
           {t(restart === 'restarting' ? 'restarting' : 'restartRequired')}
         </p>
       )}
+
+      <section className="dshDesktopSettingsGroup" aria-labelledby="dsh-desktop-update-title">
+        <div>
+          <h3 id="dsh-desktop-update-title">{t('updateTitle')}</h3>
+          <p className="dshDesktopSettingsGroupIntro">{t('updateIntro')}</p>
+        </div>
+        {view !== undefined && (
+          <div className="dshDesktopSettingsUpdateRow">
+            <div className="dshDesktopSettingsUpdateCopy">
+              <span>{t('installedVersion')} <strong>{view.updates.currentVersion}</strong></span>
+              <span className="dshDesktopSettingsHint" role="status">
+                {busy === 'check-updates' ? t('checkingUpdates') : updateStatus}
+                {view.updates.latestVersion !== undefined
+                  && view.updates.latestVersion !== view.updates.currentVersion
+                  ? ` ${view.updates.latestVersion}`
+                  : ''}
+              </span>
+              {view.updates.status === 'update-available' && !view.updates.canInstall && (
+                <span className="dshDesktopSettingsHint">{t('updateInstallUnavailable')}</span>
+              )}
+            </div>
+            <div className="dshDesktopSettingsUpdateActions">
+              <button
+                type="button"
+                className="dshDesktopSettingsButton"
+                disabled={busy !== undefined}
+                onClick={checkUpdates}
+              >
+                {busy === 'check-updates' ? t('checkingUpdates') : t('checkUpdates')}
+              </button>
+              {view.updates.status === 'update-available'
+                && view.updates.canInstall
+                && view.updates.latestVersion !== undefined && (
+                <button
+                  type="button"
+                  className="dshDesktopSettingsButton dshDesktopSettingsButtonPrimary"
+                  disabled={busy !== undefined}
+                  onClick={() => { installUpdate(view.updates.latestVersion!) }}
+                >
+                  {busy === 'install-update' ? t('startingUpdate') : t('downloadAndInstall')}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
 
       <section className="dshDesktopSettingsGroup" aria-labelledby="dsh-desktop-profile-title">
         <div>

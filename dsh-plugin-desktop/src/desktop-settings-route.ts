@@ -10,6 +10,7 @@ import type {
   DesktopProfileCreateRequest,
   DesktopProfileSelectRequest,
   DesktopSettingsErrorResponse,
+  DesktopUpdateInstallRequest,
 } from './desktop-settings-contract.ts'
 
 const MAX_SETTINGS_BODY_BYTES = 16 * 1024
@@ -145,6 +146,13 @@ function isMarketProvider(value: unknown): value is DesktopMarketProvider {
 function parseMarketRequest(value: unknown): DesktopMarketSelectRequest | undefined {
   if (!isExactRecord(value, 'provider') || !isMarketProvider(value.provider)) return undefined
   return { provider: value.provider }
+}
+
+function parseUpdateInstallRequest(value: unknown): DesktopUpdateInstallRequest | undefined {
+  if (!isExactRecord(value, 'version') || typeof value.version !== 'string'
+    || value.version.length > 64
+    || !/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/u.test(value.version)) return undefined
+  return { version: value.version }
 }
 
 function isEmptyRequest(value: unknown): boolean {
@@ -315,6 +323,53 @@ export async function handleDesktopTerminalOpenRequest(
   } catch (cause) {
     reportError('open terminal', cause)
     finishJson(res, 500, error('terminal could not be opened'))
+  }
+}
+
+/** Run one shared version check from an exact same-origin empty request. */
+export async function handleDesktopUpdateCheckRequest(
+  req: IncomingMessage,
+  res: ServerResponse,
+  expectedOrigin: string,
+  controller: DesktopSettingsController,
+  reportError: (operation: string, cause: unknown) => void = () => {},
+): Promise<void> {
+  if (req.method !== 'POST') return finishJson(res, 405, error('method not allowed'), 'POST')
+  if (!isSameOriginLoopbackRequest(req, expectedOrigin, true)) {
+    return finishJson(res, 403, error('forbidden'))
+  }
+  const value = await parsePostBody(req, res)
+  if (value === INVALID_BODY) return
+  if (!isEmptyRequest(value)) return finishJson(res, 400, error('invalid update check request'))
+  try {
+    finishJson(res, 200, await controller.checkUpdates())
+  } catch (cause) {
+    reportError('check for updates', cause)
+    finishJson(res, 500, error('update check unavailable'))
+  }
+}
+
+/** Start the native installer flow only for a freshly verified exact version. */
+export async function handleDesktopUpdateInstallRequest(
+  req: IncomingMessage,
+  res: ServerResponse,
+  expectedOrigin: string,
+  controller: DesktopSettingsController,
+  reportError: (operation: string, cause: unknown) => void = () => {},
+): Promise<void> {
+  if (req.method !== 'POST') return finishJson(res, 405, error('method not allowed'), 'POST')
+  if (!isSameOriginLoopbackRequest(req, expectedOrigin, true)) {
+    return finishJson(res, 403, error('forbidden'))
+  }
+  const value = await parsePostBody(req, res)
+  if (value === INVALID_BODY) return
+  const request = parseUpdateInstallRequest(value)
+  if (request === undefined) return finishJson(res, 400, error('invalid update install request'))
+  try {
+    finishPostResponse(res, 202, controller.installUpdate(request.version), 'install update', reportError)
+  } catch (cause) {
+    reportError('install update', cause)
+    finishJson(res, 409, error('update is not available for installation'))
   }
 }
 

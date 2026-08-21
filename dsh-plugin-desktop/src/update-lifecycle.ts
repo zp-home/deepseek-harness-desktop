@@ -35,7 +35,21 @@ export interface DesktopUpdateLifecycleOptions {
 
 /** Lifecycle handle for one generation's update operations. */
 export interface DesktopUpdateLifecycle {
+  /** Return the renderer-safe state of the shared update coordinator. */
+  snapshot(): DesktopUpdateSnapshot
+  /** Run one shared, timeout-bounded version check without opening a result dialog. */
+  checkNow(): Promise<DesktopUpdateSnapshot>
+  /** Offer and install one exact version established by a successful check. */
+  install(version: string): Promise<void>
   dispose(): Promise<void>
+}
+
+/** Renderer-safe state shared by the tray and Desktop settings page. */
+export interface DesktopUpdateSnapshot {
+  readonly status: 'idle' | 'checking' | 'up-to-date' | 'update-available' | 'downloading' | 'error'
+  readonly currentVersion: string
+  readonly latestVersion?: string
+  readonly canInstall: boolean
 }
 
 interface UpdateStateV2 {
@@ -57,6 +71,8 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
   private disposeTask: Promise<void> | undefined
   private checking = false
   private availableVersion: string | undefined
+  private lastResult: UpdateCheckResult | undefined
+  private checkFailed = false
   private downloadingVersion: string | undefined
   private state: UpdateStateV2 = EMPTY_STATE
   private pollTimer: ReturnType<typeof setTimeout> | undefined
@@ -95,6 +111,37 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
     if (this.checkTask !== undefined) pending.push(this.checkTask)
     this.disposeTask = Promise.allSettled(pending).then(() => {})
     return this.disposeTask
+  }
+
+  snapshot(): DesktopUpdateSnapshot {
+    const latestVersion = this.lastResult?.latestVersion ?? this.availableVersion
+    const status: DesktopUpdateSnapshot['status'] = this.downloadingVersion !== undefined
+      ? 'downloading'
+      : this.checking
+        ? 'checking'
+        : this.availableVersion !== undefined
+          ? 'update-available'
+          : this.checkFailed
+            ? 'error'
+            : this.lastResult?.status ?? 'idle'
+    return Object.freeze({
+      status,
+      currentVersion: this.options.adapter.currentVersion,
+      ...(latestVersion === undefined ? {} : { latestVersion }),
+      canInstall: this.options.adapter.canDownload,
+    })
+  }
+
+  async checkNow(): Promise<DesktopUpdateSnapshot> {
+    this.observeResult(await this.startCheck())
+    return this.snapshot()
+  }
+
+  async install(version: string): Promise<void> {
+    if (this.disposed || this.availableVersion !== version) {
+      throw new Error('dsh-plugin-desktop: update version is not available for installation')
+    }
+    await this.offerDownload(version, false)
   }
 
   private async loadState(): Promise<void> {
@@ -158,7 +205,16 @@ class DesktopUpdateLifecycleOwner implements DesktopUpdateLifecycle {
   }
 
   private observeResult(result: UpdateCheckResult | null): string | undefined {
-    if (this.disposed || result === null) return undefined
+    if (this.disposed) return undefined
+    if (result === null) {
+      this.lastResult = undefined
+      this.availableVersion = undefined
+      this.checkFailed = true
+      this.registration.refresh()
+      return undefined
+    }
+    this.lastResult = result
+    this.checkFailed = false
     this.availableVersion = result.status === 'update-available' && this.options.adapter.canDownload
       ? result.latestVersion
       : undefined

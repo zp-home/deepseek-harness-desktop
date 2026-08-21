@@ -46,6 +46,14 @@ export function apply(ctx: Context, config: Config): void {
       locale: () => ctx.desktopRuntime.locale,
       registerTrayItem: item => ctx.desktopRuntime.registerTrayItem(item),
     })
+    ctx.provide('desktopUpdates', lifecycle)
     return () => lifecycle.dispose()
   }, 'dsh-plugin-desktop: update polling, confirmation, and installer handoff')
+}
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    /** Shared update coordinator used by the tray and private settings API. */
+    desktopUpdates: import('./update-lifecycle.ts').DesktopUpdateLifecycle
+  }
 }

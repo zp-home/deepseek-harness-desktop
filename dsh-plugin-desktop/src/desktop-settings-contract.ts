@@ -17,6 +17,12 @@ export const DESKTOP_MARKET_SELECT_PATH = '/api/desktop/market/select'
 /** Open the launcher-owned DSH terminal without accepting command text. */
 export const DESKTOP_TERMINAL_OPEN_PATH = '/api/desktop/terminal/open'
 
+/** Run a bounded version check through the shared native update coordinator. */
+export const DESKTOP_UPDATE_CHECK_PATH = '/api/desktop/updates/check'
+
+/** Offer one exact, freshly confirmed version to the native installer flow. */
+export const DESKTOP_UPDATE_INSTALL_PATH = '/api/desktop/updates/install'
+
 /** Renderer-safe projection of one discovered profile. */
 export interface DesktopSettingsProfileView {
   /** Profile name accepted by the launcher. */
@@ -39,6 +45,14 @@ export interface DesktopSettingsMarketView {
   readonly legacyDefaulted: boolean
 }
 
+/** Renderer-safe state of the Desktop update coordinator. */
+export interface DesktopSettingsUpdateView {
+  readonly status: 'idle' | 'checking' | 'up-to-date' | 'update-available' | 'downloading' | 'error'
+  readonly currentVersion: string
+  readonly latestVersion?: string
+  readonly canInstall: boolean
+}
+
 /** Complete renderer-safe Desktop settings state. */
 export interface DesktopSettingsResponse {
   /** Profile backing the currently running generation. */
@@ -47,6 +61,8 @@ export interface DesktopSettingsResponse {
   readonly profiles: readonly DesktopSettingsProfileView[]
   /** Market choice for the current and next generation. */
   readonly market: DesktopSettingsMarketView
+  /** Installed version and the last verified release state. */
+  readonly updates: DesktopSettingsUpdateView
 }
 
 /** Exact body accepted by the profile-creation endpoint. */
@@ -84,6 +100,22 @@ export type DesktopTerminalOpenRequest = Readonly<Record<string, never>>
 
 /** Successful handoff to the launcher-owned terminal action. */
 export interface DesktopTerminalOpenResponse {
+  readonly accepted: true
+}
+
+/** Exact empty body accepted by the update-check endpoint. */
+export type DesktopUpdateCheckRequest = Readonly<Record<string, never>>
+
+/** Successful update check returns the shared coordinator state. */
+export type DesktopUpdateCheckResponse = DesktopSettingsUpdateView
+
+/** Exact version accepted only after the shared coordinator verified it. */
+export interface DesktopUpdateInstallRequest {
+  readonly version: string
+}
+
+/** Native confirmation/download handoff accepted after the HTTP response. */
+export interface DesktopUpdateInstallResponse {
   readonly accepted: true
 }
 

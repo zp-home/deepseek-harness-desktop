@@ -741,6 +741,28 @@ async function start(): Promise<void> {
           ),
           scheduleRestart: scheduleSettingsRestart,
           openTerminal: () => { runtime.openTerminal() },
+          readUpdates: () => hostCtx.get('desktopUpdates')?.snapshot() ?? Object.freeze({
+            status: 'idle',
+            currentVersion: runtime.updates.currentVersion,
+            canInstall: runtime.updates.canDownload,
+          }),
+          checkUpdates: async () => {
+            const updates = hostCtx.get('desktopUpdates')
+            if (updates === undefined) throw new Error(`${BIN_NAME}: Desktop update service is unavailable`)
+            return updates.checkNow()
+          },
+          installUpdate: version => {
+            const updates = hostCtx.get('desktopUpdates')
+            if (updates === undefined) {
+              hostCtx.logger.error(`${BIN_NAME}: Desktop update service is unavailable`)
+              return
+            }
+            void updates.install(version).catch((cause: unknown) => {
+              hostCtx.logger.error(
+                `${BIN_NAME}: failed to install Desktop update: ${cause instanceof Error ? cause.message : String(cause)}`,
+              )
+            })
+          },
         }))
         provideCmdline(hostCtx, {
           args: ['--host', '127.0.0.1', '--port', String(prepared.port)],
