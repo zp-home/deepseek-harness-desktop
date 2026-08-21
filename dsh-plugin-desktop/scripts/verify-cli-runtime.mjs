@@ -13,6 +13,7 @@ const desktopCli = fileURLToPath(new URL('lib/desktop-cli.js', packageRoot))
 const dshAppBootPackage = fileURLToPath(new URL('node_modules/@deepseek-ai/dsh-app-boot/', packageRoot))
 const dshAtomicWritePackage = fileURLToPath(new URL('node_modules/@deepseek-ai/dsh-atomic-write/', packageRoot))
 const dshPackage = fileURLToPath(new URL('node_modules/@deepseek-ai/dsh/', packageRoot))
+const yamlPackage = fileURLToPath(new URL('node_modules/yaml/', packageRoot))
 const pnpmCli = fileURLToPath(new URL('node_modules/pnpm/bin/pnpm.mjs', packageRoot))
 const dshVersion = JSON.parse(readFileSync(new URL('node_modules/@deepseek-ai/dsh/package.json', packageRoot), 'utf8')).version
 const pnpmVersion = JSON.parse(readFileSync(new URL('node_modules/pnpm/package.json', packageRoot), 'utf8')).version
@@ -163,6 +164,7 @@ function runFlatProfileDshEntry() {
   const linkedAppBootPackage = join(root, 'node_modules', '@deepseek-ai', 'dsh-app-boot')
   const linkedAtomicWritePackage = join(root, 'node_modules', '@deepseek-ai', 'dsh-atomic-write')
   const linkedDshPackage = join(root, 'node_modules', '@deepseek-ai', 'dsh')
+  const linkedYamlPackage = join(root, 'node_modules', 'yaml')
   try {
     mkdirSync(join(root, 'node_modules', '@deepseek-ai'), { recursive: true })
     cpSync(fileURLToPath(new URL('lib/', packageRoot)), join(desktopPackage, 'lib'), { recursive: true })
@@ -170,6 +172,7 @@ function runFlatProfileDshEntry() {
     symlinkSync(dshAppBootPackage, linkedAppBootPackage, process.platform === 'win32' ? 'junction' : 'dir')
     symlinkSync(dshAtomicWritePackage, linkedAtomicWritePackage, process.platform === 'win32' ? 'junction' : 'dir')
     symlinkSync(dshPackage, linkedDshPackage, process.platform === 'win32' ? 'junction' : 'dir')
+    symlinkSync(yamlPackage, linkedYamlPackage, process.platform === 'win32' ? 'junction' : 'dir')
     runElectronEntry(
       'flat profile dsh plugin help',
       ['--expose-internals'],

@@ -1,8 +1,11 @@
 /** Private RunAsNode bootstrap for the packaged DeepSeek Harness CLI. */
 
 import { randomUUID } from 'node:crypto'
+import { open } from 'node:fs/promises'
+import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { resolveProfileDir } from '@deepseek-ai/dsh-app-boot'
+import { isMap, isScalar, parseDocument } from 'yaml'
 import {
   DESKTOP_INSTALL_RECOVERY_STATE_ENV,
   DesktopInstallRecoveryStore,
@@ -14,6 +17,10 @@ import { assertDesktopProfileName } from './profile-manager.ts'
 const RUN_AS_NODE = 'ELECTRON_RUN_AS_NODE'
 const DEFAULT_PROFILE = 'DSH_DESKTOP_DEFAULT_PROFILE'
 const DSH_HOME = 'DSH_HOME'
+const BLOCKED_BUILD_PLACEHOLDER = 'set this to true or false'
+const MAX_WORKSPACE_HINT_BYTES = 64 * 1024
+const MAX_BLOCKED_BUILD_HINTS = 16
+const PACKAGE_NAME_PATTERN = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/u
 const DSH_ENTRY_URL = pathToFileURL(
   packagedDependencyPath(import.meta.url, '@deepseek-ai/dsh/lib/bin.js'),
 ).href
@@ -112,6 +119,73 @@ class CapturedDesktopCliExit {
   constructor(readonly code: number) {}
 }
 
+/**
+ * Describe pnpm build-script decisions that require explicit user approval.
+ * Malformed or oversized workspace files never interfere with install recovery.
+ */
+export async function blockedBuildsHint(profileDir: string): Promise<string | undefined> {
+  const workspacePath = join(profileDir, 'pnpm-workspace.yaml')
+  let workspaceYaml: string
+  try {
+    const workspace = await open(workspacePath, 'r')
+    try {
+      const metadata = await workspace.stat()
+      if (!metadata.isFile() || metadata.size > MAX_WORKSPACE_HINT_BYTES) return undefined
+
+      const content = Buffer.alloc(MAX_WORKSPACE_HINT_BYTES + 1)
+      let bytesRead = 0
+      while (bytesRead < content.length) {
+        const result = await workspace.read(content, bytesRead, content.length - bytesRead, bytesRead)
+        if (result.bytesRead === 0) break
+        bytesRead += result.bytesRead
+      }
+      if (bytesRead > MAX_WORKSPACE_HINT_BYTES) return undefined
+      workspaceYaml = content.toString('utf8', 0, bytesRead)
+    } finally {
+      await workspace.close()
+    }
+  } catch {
+    return undefined
+  }
+
+  let document: ReturnType<typeof parseDocument>
+  try {
+    document = parseDocument(workspaceYaml, { prettyErrors: false })
+  } catch {
+    return undefined
+  }
+  if (document.errors.length > 0) return undefined
+  const allowBuilds = document.get('allowBuilds', true)
+  if (!isMap(allowBuilds)) return undefined
+
+  const names: string[] = []
+  const seen = new Set<string>()
+  for (const pair of allowBuilds.items) {
+    if (!isScalar(pair.key) || typeof pair.key.value !== 'string') continue
+    if (!isScalar(pair.value) || pair.value.value !== BLOCKED_BUILD_PLACEHOLDER) continue
+    const name = pair.key.value
+    if (!PACKAGE_NAME_PATTERN.test(name) || seen.has(name)) continue
+    seen.add(name)
+    names.push(name)
+  }
+  if (names.length === 0) return undefined
+
+  const shown = names.slice(0, MAX_BLOCKED_BUILD_HINTS)
+  const omitted = names.length - shown.length
+  return [
+    'dsh-desktop: pnpm blocked dependency build scripts that require explicit approval.',
+    'Review each package before allowing native or lifecycle scripts to run.',
+    `After recovery, add only trusted entries to allowBuilds in ${workspacePath}:`,
+    '  allowBuilds:',
+    ...shown.map(name => `    ${name}: true`),
+    ...(omitted === 0 ? [] : [
+      `    # ${omitted} additional blocked package(s) omitted; approve this batch, then retry to review the rest`,
+    ]),
+    'Then re-run the plugin add command. Unapproved scripts remain blocked.',
+    '',
+  ].join('\n')
+}
+
 /** Run one built-in-terminal add inside the same durable recovery boundary as Market installs. */
 async function loadWithInstallRecovery(
   load: (url: string) => Promise<unknown>,
@@ -155,6 +229,8 @@ async function loadWithInstallRecovery(
       throw cause
     }
   } else {
+    const hint = await blockedBuildsHint(store.profileDir)
+    if (hint !== undefined) process.stderr.write(hint)
     const restored = await store.restoreCurrentInstall(transaction.transactionId, 'install-failed')
     if (restored.status !== 'manual-recovery-required') await store.clear(transaction.transactionId)
   }

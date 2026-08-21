@@ -6,10 +6,10 @@ This is the decision ledger for `zp-home/deepseek-harness-desktop`. It tracks
 the open work reported against `anywhere-labs/deepseek-harness-desktop` without
 granting blanket approval to upstream Issues or pull requests.
 
-Snapshot: 2026-08-21, official `master` at `7ff6c98bc561d424fa8d2b65f8c3ba840f37f566`.
-The snapshot contains 102 open Issues and 40 open pull requests. Fork `master`
-is 38 commits ahead and 0 behind after the latest-core revalidation PR #16 was
-merged.
+Snapshot: 2026-08-21, official `master` at `a4865e2c03a8ec1e6945797196ce4d64e3202360`.
+The snapshot contains 104 open Issues and 39 open pull requests. The active
+fork adaptation line contains this official commit; fork PR #18 carries the
+remaining `master` synchronization and the bounded plugin-install guidance.
 
 ## Decision policy
 
@@ -106,10 +106,18 @@ or message-semantics customization to obtain them.
 - Resolved Issue #450 at the documented `sidebar.footer.action` style anchor.
   Footer list entries now stack vertically in expanded and collapsed sidebars,
   so another plugin cannot horizontally squeeze or deform the Market launcher.
+- Merged fork PR #17 after all five CI jobs passed. It contains the Issue #450
+  footer fix and leaves the existing trusted-source Market boundary unchanged.
 - Disabled pushes to the official repository through the `upstream` remote.
 
 ### In progress
 
+- Fork PR #18 adapts Issue #348 and official PR #349. It reads pnpm's temporary
+  `allowBuilds` placeholders before protected rollback, uses a structured YAML
+  parser with a 64 KiB input limit and legal-package-name filtering, and tells
+  the user to authorize only reviewed packages. It never changes a value to
+  `true`, never weakens CI mode, and never bypasses recovery.
+- CI for fork PR #18 must pass before a merge commit is made into fork `master`.
 - Keep this ledger synchronized as high-impact Issues and pull requests are
   audited or implemented.
 
@@ -117,6 +125,13 @@ or message-semantics customization to obtain them.
 
 - Evaluate PR #266 for the Windows restricted sandbox only after measuring its
   packaged-size cost and running a real Windows shell probe matrix.
+- Audit Issue #340 cancellation end to end: the Market has an `AbortController`,
+  but the UI must not enable Cancel until the Host is proven to terminate the
+  protected subprocess and converge the recovery transaction.
+- Adapt Issue #334 only through bounded, secret-redacted subprocess diagnostics;
+  do not expose arbitrary pnpm output directly through the Market API.
+- Consider Issue #453 as a settings UI-only search and clear-selection change,
+  without changing provider discovery or model request semantics.
 - Consolidate duplicate plugin-install and Linux-packaging reports before
   selecting one implementation path.
 
@@ -132,6 +147,16 @@ or message-semantics customization to obtain them.
 - Do not partially downgrade the accepted `0.1.1-rc.1` package family or ship an
   unsupported mixed rc8/rc.1 runtime.
 - Do not add an unreviewed plugin catalog or external webview surface.
+- Do not accept PR #445 as written. Reporting a provider's truncated 300-item
+  response as a complete catalog silently corrupts search, categories, and
+  install visibility. A later adaptation needs explicit partial-catalog state.
+- Do not merge PR #278 wholesale. Manual exact-version discovery, lifecycle
+  script suppression, cursor validation, and receipt rollback can be audited
+  separately; automatic startup installation of future code needs a distinct
+  trust and release decision.
+- Do not restore arbitrary `runPlugin(['add'])` for Issue #327. Third-party
+  installers must migrate to the constrained recoverable install API so exact
+  targets, receipts, snapshots, and supply-chain checks remain enforceable.
 - Do not spend the short-term release budget on branding-only or system-resident
   decorative features.
 
@@ -143,8 +168,15 @@ or message-semantics customization to obtain them.
 | 448 | completed | The coherent runtime/package family shipped through fork PR #14. Separate core self-update remains a later architecture decision. |
 | 449 | completed | The fork already shows plugin/source descriptions and supports user-added standard HTTPS manifests. No unreviewed built-in catalog was added. |
 | 450 | completed | The official slot anchor now provides a vertical list container, preventing multiple footer plugins from squeezing each other in either sidebar width. |
+| 453 | future-adapt | Useful model-list search and clear-selection UI can be implemented locally without changing provider/model request behavior. |
+| 454 | consolidate | Ubuntu packaging belongs with Issues/PRs #220/#264/#265/#304 in one audited Linux packaging design. |
 | 441 | completed | Covered by fork PR #5. |
 | 427 | completed | Covered by the corrected fork PR #7. |
+| 348 | in-progress | Fork PR #18 adapts safe, bounded `allowBuilds` guidance while preserving explicit consent and rollback. |
+| 346 | next-audit | Separate dshfind installability from the truncated 1024Store provider; do not solve availability by pretending partial data is complete or adding catalogs. |
+| 340 | next-audit | Cancellation is valuable, but Host subprocess termination and recovery convergence must be proven before enabling the UI action. |
+| 334 | future-adapt | Preserve rollback and expose only bounded, secret-redacted actionable failure details. |
+| 327 | future-adapt | Publish and retain the constrained `runPluginInstall` migration path; do not re-open unrestricted `plugin add`. |
 | 439, 305 | future-validation | Restricted Windows sandbox needs the binary-size and shell probe gate above. |
 | 442 | deferred-core | Output verbosity affects prompts/model behavior; wait for an upstream rc8-compatible surface. |
 | 21, 157, 168, 353, 390, 400, 414, 416, 417 | deferred-core | Model/provider/request-chain behavior needs upstream-compatible diagnosis first. |
@@ -155,7 +187,7 @@ or message-semantics customization to obtain them.
 All other open Issues remain `pending-review`:
 
 `443, 435, 434, 431, 425, 415, 408, 407, 405, 393, 387, 373, 372, 369,
-367, 363, 357, 351, 348, 347, 346, 341, 340, 339, 338, 335, 334, 328, 327,
+367, 363, 357, 351, 347, 341, 339, 338, 335, 328,
 326, 325, 321, 318, 317, 314, 311, 310, 308, 299, 297, 289, 286, 285, 253,
 247, 245, 242, 230, 221, 200, 198, 195, 186, 176, 175, 173, 170, 169, 160,
 151, 146, 138, 137, 136, 133, 131, 125, 119, 110, 109, 108, 103, 99, 95,
@@ -167,6 +199,10 @@ All other open Issues remain `pending-review`:
 | ---: | --- | --- |
 | 428 | already-covered | Fork PR #7 implements the valid lifecycle-safe subset. |
 | 451 | already-covered | Fork PR #5 already localizes these rc.1 trajectory and Thinking labels. Do not duplicate the patch while official CI is failing; reassess replacement only after upstream merges. |
+| 452 | ancestry-integrated | The official test-expectation alignment commit is included in fork PR #18; equivalent fork behavior was already covered. |
+| 349 | in-progress | Fork PR #18 adapts the intent with structured YAML parsing, bounded reads, package-name filtering, explicit consent, and recovery integration. |
+| 445 | rejected | Treating a truncated 300-item provider response as a complete scan creates false catalog semantics; require explicit partial-catalog support. |
+| 278 | split-review | Review manual verified updates, script suppression, cursor validation, receipts, and automatic future-code installation as separate risk units. |
 | 121 | completed | Adapted with exact declared/delivered byte matching in fork PR #8. |
 | 122 | completed | Adapted with initial and retry disposal-path tests in fork PR #10. |
 | 209 | completed | Selectable-profile recovery shipped in fork PR #13; unrelated SIGTERM work was excluded. |
@@ -179,7 +215,7 @@ All other open Issues remain `pending-review`:
 
 All other open pull requests remain `pending-review`:
 
-`446, 445, 440, 426, 422, 358, 355, 350, 349, 342, 281, 278, 277, 270, 251, 224,
+`446, 440, 426, 422, 358, 355, 350, 342, 281, 277, 270, 251, 224,
 211, 196, 192, 184, 130, 126, 124, 114, 87`.
 
 ## Status vocabulary
@@ -188,6 +224,8 @@ All other open pull requests remain `pending-review`:
 - `in-progress`: currently being adapted on a fork branch.
 - `next-audit`: next bounded candidate for detailed review.
 - `future-adapt`: useful scope identified, implementation intentionally queued.
+- `split-review`: a large proposal whose safety-relevant parts must be audited
+  and accepted independently.
 - `future-validation`: blocked on evidence, not on coding effort.
 - `deferred-core`: avoided because it creates long-term upstream-core coupling.
 - `deferred-supply-chain`: needs explicit trust and ownership review.
