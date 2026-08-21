@@ -111,6 +111,48 @@ describe('Desktop startup state commit ownership', () => {
     expect(logger.error).not.toHaveBeenCalled()
   })
 
+  it('routes a failed provisional profile fallback to recovery without a relaunch loop', async () => {
+    const root = temporaryRoot()
+    const home = join(root, 'home')
+    const userDataDir = join(root, 'user-data')
+    const profileStatePath = join(userDataDir, 'profile-selection', 'state.json')
+    const profileDir = writeWebProfile(home, 'web')
+    const desktopDir = join(home, 'profiles', 'desktop')
+    mkdirSync(desktopDir, { recursive: true })
+    writeFileSync(join(desktopDir, 'package.json'), JSON.stringify({
+      name: 'dsh-profile-desktop',
+      private: true,
+      dsh: { profile: { bundles: 'broken' } },
+    }) + '\n')
+    const profile = beginDesktopProfileStartup(profileStatePath, home)
+    expect(profile).toMatchObject({
+      profileName: 'web',
+      state: { active: 'web', lastKnownGood: 'web' },
+      recoveredState: true,
+    })
+    const commit = new DesktopStartupStateCommit({
+      profile,
+      profileStatePath,
+      installRecovery: recoveryStore(userDataDir, 'web', profileDir, 'generation-0001'),
+      quiesceForRecovery: async () => true,
+      logger: { error: vi.fn<(message: string) => void>() },
+    })
+
+    await expect(commit.commitFailure({
+      appReady: true,
+      stage: 'renderer-startup',
+      failureReason: 'renderer-timeout',
+    })).resolves.toEqual({
+      route: 'startup-recovery',
+      recoveryActionsSafe: true,
+    })
+    expect(readDesktopProfileState(profileStatePath)).toEqual({
+      version: 1,
+      active: 'web',
+      lastKnownGood: 'web',
+    })
+  })
+
   it('quiesces the Host before recording a protected install failure', async () => {
     const root = temporaryRoot()
     const home = join(root, 'home')

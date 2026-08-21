@@ -238,4 +238,72 @@ describe('desktop profile selection state', () => {
       rolledBackFrom: 'work',
     })
   })
+
+  it('recovers from a broken default profile through the virtual Web profile', () => {
+    const root = temporaryRoot()
+    const home = join(root, 'harness')
+    const statePath = join(root, 'private', 'state.json')
+    writeProfile(home, 'desktop', 'broken')
+    writeProfile(home, 'work', ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'])
+
+    expect(beginDesktopProfileStartup(statePath, home)).toEqual({
+      profileName: 'web',
+      state: { version: 1, active: 'web', lastKnownGood: 'web' },
+      recoveredState: true,
+      rolledBackFrom: 'desktop',
+    })
+  })
+
+  it('uses the first selectable user profile when both managed defaults are broken', () => {
+    const root = temporaryRoot()
+    const home = join(root, 'harness')
+    const statePath = join(root, 'private', 'state.json')
+    writeProfile(home, 'desktop', 'broken')
+    writeProfile(home, 'web', 'broken')
+    writeProfile(home, 'zeta', ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'])
+    writeProfile(home, 'alpha', ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'])
+
+    expect(beginDesktopProfileStartup(statePath, home)).toEqual({
+      profileName: 'alpha',
+      state: { version: 1, active: 'alpha', lastKnownGood: 'alpha' },
+      recoveredState: true,
+      rolledBackFrom: 'desktop',
+    })
+  })
+
+  it.each([
+    [{ version: 1, active: 'desktop', pending: 'missing', lastKnownGood: 'desktop' }, 'missing'],
+    [{ version: 1, active: 'missing', lastKnownGood: 'desktop' }, 'missing'],
+  ] as const)('recovers unavailable transition state %# without reusing a broken baseline', (state, rolledBackFrom) => {
+    const root = temporaryRoot()
+    const home = join(root, 'harness')
+    const stateDir = join(root, 'private')
+    const statePath = join(stateDir, 'state.json')
+    mkdirSync(stateDir, { recursive: true })
+    writeFileSync(statePath, `${JSON.stringify(state)}\n`)
+    writeProfile(home, 'desktop', 'broken')
+
+    expect(beginDesktopProfileStartup(statePath, home)).toEqual({
+      profileName: 'web',
+      state: { version: 1, active: 'web', lastKnownGood: 'web' },
+      recoveredState: true,
+      rolledBackFrom,
+    })
+  })
+
+  it('keeps the default fail-loud target when no profile is selectable', () => {
+    const root = temporaryRoot()
+    const home = join(root, 'harness')
+    const statePath = join(root, 'private', 'state.json')
+    writeProfile(home, 'desktop', 'broken')
+    writeProfile(home, 'web', 'broken')
+    writeProfile(home, 'headless', ['@deepseek-ai/dsh-base'])
+
+    expect(beginDesktopProfileStartup(statePath, home)).toEqual({
+      profileName: 'desktop',
+      state: { version: 1, active: 'desktop', lastKnownGood: 'desktop' },
+      recoveredState: true,
+      rolledBackFrom: 'desktop',
+    })
+  })
 })
