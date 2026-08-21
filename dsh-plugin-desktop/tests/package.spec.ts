@@ -619,6 +619,11 @@ describe('published package surface', () => {
       .toBe('yarn workspace dsh-community-market build && yarn workspace dsh-plugin-desktop dist:win-portable')
     expect(manifest.build?.afterPack).toBe('./scripts/verify-packaged-runtime.ts')
     expect(manifest.build?.mac).toEqual(expect.objectContaining({
+      extendInfo: {
+        CFBundleAllowMixedLocalizations: true,
+        CFBundleDevelopmentRegion: 'en',
+        CFBundleLocalizations: ['en', 'zh_CN'],
+      },
       hardenedRuntime: true,
       mergeASARs: false,
       notarize: true,
