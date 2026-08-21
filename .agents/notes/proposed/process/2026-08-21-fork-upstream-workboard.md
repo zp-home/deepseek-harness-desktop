@@ -6,8 +6,10 @@ This is the decision ledger for `zp-home/deepseek-harness-desktop`. It tracks
 the open work reported against `anywhere-labs/deepseek-harness-desktop` without
 granting blanket approval to upstream Issues or pull requests.
 
-Snapshot: 2026-08-21, official `master` at `d457d790295e727bbb1fc20e398da602f521fd64`.
-The snapshot contains 99 open Issues and 39 open pull requests.
+Snapshot: 2026-08-21, official `master` at `7ff6c98bc561d424fa8d2b65f8c3ba840f37f566`.
+The snapshot contains 99 open Issues and 39 open pull requests. Fork `master`
+is 28 commits ahead and 9 commits behind because the official branch moved to
+DeepSeek Harness `0.1.1-rc.1` after the fork's rc8 synchronization.
 
 ## Decision policy
 
@@ -26,6 +28,32 @@ The snapshot contains 99 open Issues and 39 open pull requests.
 - Every accepted change uses a fork branch, a pull request targeting fork
   `master`, CI, a merge commit, and local `master` synchronization.
 
+## Upstream version gate
+
+The fork intentionally remains on the requested rc8 runtime at submodule commit
+`141eb6fef83422698aef7a981029e843e8161534`. The latest official Desktop
+`master` now pins `0.1.1-rc.1` at submodule commit
+`528c682e061696f5a160f363f236ecbf53cbd006`. Merging it is therefore a runtime
+upgrade, not an ordinary Desktop synchronization.
+
+The nine new official commits have been split and audited:
+
+- `5af5b8503b` and `70fc0a3cff` are the core/runtime and dependency upgrade;
+  they are held behind an explicit version decision.
+- `d17c7d2f81` is already covered by fork PR #10.
+- `7686b524c2` contains launcher module preservation and macOS reveal behavior;
+  it is a candidate for an rc8-compatible, conflict-aware adaptation.
+- `73e5fa9910` adds safe Web-profile creation; its required app-boot functions
+  exist in rc8, but the product behavior still needs a separate acceptance
+  decision and focused tests.
+- `ba59b93e38` adds persisted Market provider selection; retain it as a future
+  Desktop boundary candidate until catalog ownership and UI integration are
+  reviewed together.
+
+Do not merge the official branch and then silently downgrade its dependency
+files. That would claim upstream ancestry while running an unreviewed runtime
+combination.
+
 ## Todo
 
 ### Completed
@@ -36,6 +64,8 @@ The snapshot contains 99 open Issues and 39 open pull requests.
   `141eb6fef83422698aef7a981029e843e8161534`.
 - Adapted rc8 trajectory/thinking localization in fork PR #5.
 - Synchronized official Desktop changes in fork PR #6.
+- Re-fetched and audited official `master` after it advanced to
+  `0.1.1-rc.1`; recorded the version boundary instead of silently upgrading.
 - Added lifecycle-safe external sandbox integration guidance in fork PR #7,
   correcting the upstream proposal's multi-service ownership problem.
 - Adapted official PR #121 in fork PR #8 with exact declared/delivered update
@@ -52,6 +82,9 @@ The snapshot contains 99 open Issues and 39 open pull requests.
 
 - Adapt only the profile recovery portion of PR #209; do not inherit unrelated
   SIGTERM behavior.
+- Decide the next runtime target before merging official `master` beyond its
+  last rc8-compatible commit.
+- Audit `7686b524c2` as the next rc8-compatible Desktop-only backport candidate.
 - Evaluate PR #266 for the Windows restricted sandbox only after measuring its
   packaged-size cost and running a real Windows shell probe matrix.
 - Consolidate duplicate plugin-install and Linux-packaging reports before
@@ -65,6 +98,8 @@ The snapshot contains 99 open Issues and 39 open pull requests.
   execution. PowerShell 5.1 and `cmd.exe` show the same restricted-token fault.
 - Do not adopt PR #266 as-is: its bundled Node approach may fix the execution
   chain but adds roughly 87 MB and lacks the required packaged probe evidence.
+- Do not merge the official `0.1.1-rc.1` dependency bump into an rc8-targeted
+  release or rewrite its manifests afterward to create an unsupported hybrid.
 - Do not add an unreviewed plugin catalog or external webview surface.
 - Do not spend the short-term release budget on branding-only or system-resident
   decorative features.
