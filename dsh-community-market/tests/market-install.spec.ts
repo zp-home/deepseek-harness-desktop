@@ -242,9 +242,13 @@ function recoverableRunner(
   let pendingPackageName: string | undefined
   return {
     ...implementation,
-    async runPluginInstall(args, dir, recovery, signal) {
-      pendingPackageName = recovery.packageName
-      return implementation.runPlugin(args, dir, signal)
+    async installPlugin(request) {
+      pendingPackageName = request.recovery.packageName
+      return implementation.runPlugin([
+        'add',
+        ...(request.pnpmOptions ?? []),
+        `${request.recovery.packageName}@${request.recovery.packageVersion}`,
+      ], request.invokingDir, request.signal)
     },
     async recoveredInstallReceiptIds() { return [] },
     async acknowledgeRecoveredInstall() {},
@@ -269,7 +273,7 @@ describe('npm registry verification', () => {
         version,
         repository: { type: 'git', url: 'git+https://github.com/example/dsh-plugin-safe.git' },
         scripts: { test: 'vitest' },
-        dependencies: { '@deepseek-ai/dsh-agent': '^0.1.0-rc.7' },
+        dependencies: { '@deepseek-ai/dsh-agent': '^0.1.0-rc.8' },
         peerDependencies: { '@deepseek-ai/cordis': '^4.0.1' },
         engines: { node: '>=22.19.0' },
         dist: { integrity, tarball },
@@ -676,6 +680,11 @@ describe('market install service', () => {
     const pnpm = recoverableRunner(profileDir, {
       runPlugin(args) {
         calls.push(args[0]!)
+        const stderr = Readable.from(args[0] === 'add'
+          ? [
+              '\u001B[31mERR_PNPM_FETCH_401 GET https://user:password@registry.example.invalid/package?token=npm_not_a_real_token_123456#fragment Authorization: Bearer ghp_not_a_real_token_123456\u001B[0m\n',
+            ]
+          : [])
         const done = (async () => {
           if (args[0] === 'add') {
             await writeInstalledPlugin(profileDir)
@@ -684,7 +693,7 @@ describe('market install service', () => {
           await removeInstalledPlugin(profileDir)
           return { exitCode: 0, signal: null }
         })()
-        return { stdout: Readable.from([]), stderr: Readable.from([]), done, cancel: vi.fn() }
+        return { stdout: Readable.from([]), stderr, done, cancel: vi.fn() }
       },
     })
     const service = new MarketInstallService(
@@ -695,10 +704,15 @@ describe('market install service', () => {
     )
     service.observeCatalog(snapshot())
     const preview = await service.previewInstall('source-1', 'example/dsh-plugin-safe', new AbortController().signal)
-    await expect(service.executeInstall(preview.intent, new AbortController().signal)).rejects.toMatchObject({
+    const execution = service.executeInstall(preview.intent, new AbortController().signal)
+    await expect(execution).rejects.toMatchObject({
       code: 'operation-failed',
-      message: expect.stringContaining('partial installation was rolled back'),
+      message: expect.stringContaining('ERR_PNPM_FETCH_401 GET https://registry.example.invalid/package'),
     })
+    await expect(execution).rejects.toThrow('partial installation was rolled back')
+    await expect(execution).rejects.not.toThrow('user:password')
+    await expect(execution).rejects.not.toThrow('not_a_real_token')
+    await expect(execution).rejects.not.toThrow('Authorization: Bearer ghp_')
     expect(calls).toEqual(['add', 'remove'])
     expect(settings.receipts()).toEqual([])
     expect(JSON.parse(await readFile(join(profileDir, 'package.json'), 'utf8')).dependencies).toEqual({})

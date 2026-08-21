@@ -7,8 +7,9 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import { applyAdvancedShell } from './advanced-shell.ts'
 import { startRendererBootReporter } from './boot-health.ts'
-import { installDesktopDirectoryPickerBridge } from './directory-picker.ts'
+import { installDesktopDirectoryPickerBridge, requestDesktopDirectoryValidation } from './directory-picker.ts'
 import { parseDesktopClientEnvironment } from './environment.ts'
+import { installPromptHistory } from './prompt-history.ts'
 import { installWorkspaceFolderDrop } from './workspace-folder-drop.ts'
 
 export { applyAdvancedShell } from './advanced-shell.ts'
@@ -39,9 +40,16 @@ export function apply(ctx: ClientContext): void {
     'dsh-plugin-desktop: renderer boot health report',
   )
   ctx.effect(
+    () => installPromptHistory(ctx),
+    'dsh-plugin-desktop: prompt history',
+  )
+  ctx.effect(
     () => installWorkspaceFolderDrop({
       create: input => ctx.workspaces.create(input),
       startSession: workspaceId => { ctx.workspaces.startSession(workspaceId) },
+      ...(environment.platform === 'win32'
+        ? { validateDirectory: (path: string) => requestDesktopDirectoryValidation(path) }
+        : {}),
     }),
     'dsh-plugin-desktop: workspace folder drop',
   )
