@@ -6,6 +6,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import { applyAdvancedShell } from './advanced-shell.ts'
 import { startRendererBootReporter } from './boot-health.ts'
+import { installComposerFileDrop } from './composer-file-drop.ts'
 import { applyDesktopSettings } from './desktop-settings.ts'
 import { installDesktopDirectoryPickerBridge, requestDesktopDirectoryValidation } from './directory-picker.ts'
 import { parseDesktopClientEnvironment } from './environment.ts'
@@ -75,6 +76,10 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(
     () => installPromptHistory(ctx),
     'dsh-plugin-desktop: prompt history',
+  )
+  ctx.effect(
+    () => installComposerFileDrop(ctx),
+    'dsh-plugin-desktop: composer file path drop',
   )
   ctx.effect(
     () => installWorkspaceFolderDrop({
