@@ -176,6 +176,31 @@ describe('desktop profile service', () => {
     expect(requestRestart).toHaveBeenCalledTimes(2)
   })
 
+  it.each([
+    ['the first restart attempt', false, 1],
+    ['a retry after restart failure', true, 2],
+  ] as const)('resolves when %s disposes the service generation', async (_label, failFirst, attempts) => {
+    let disposeFiber!: () => Promise<unknown>
+    const persistSelection = vi.fn(async () => {})
+    const requestRestart = vi.fn(async () => {
+      if (failFirst && requestRestart.mock.calls.length === 1) {
+        throw new Error('restart unavailable')
+      }
+      await disposeFiber()
+    })
+    const mounted = await mount(createBootstrap({ persistSelection, requestRestart }))
+    disposeFiber = mounted.dispose
+
+    if (failFirst) {
+      await expect(mounted.service.select('work')).rejects.toThrow('restart unavailable')
+    }
+    await expect(mounted.service.select('work')).resolves.toBeUndefined()
+
+    expect(mounted.ctx.get('desktopProfiles')).toBeUndefined()
+    expect(persistSelection).toHaveBeenCalledOnce()
+    expect(requestRestart).toHaveBeenCalledTimes(attempts)
+  })
+
   it('unregisters with its fiber and rejects retained calls after disposal', async () => {
     const pending = deferred<void>()
     const requestRestart = vi.fn(async () => {})
