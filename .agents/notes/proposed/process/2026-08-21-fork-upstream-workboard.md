@@ -8,8 +8,7 @@ granting blanket approval to upstream Issues or pull requests.
 
 Snapshot: 2026-08-21, official `master` at `8dbb94428e17dd99eb9ed66ea6e6885968fd5dd1`.
 The snapshot contains 103 open Issues and 38 open pull requests. Fork `master`
-contains this official commit and is 48 commits ahead and 0 behind after fork
-PR #20 was merged.
+contains this official commit and remains 0 behind after fork PR #21 was merged.
 
 ## Decision policy
 
@@ -153,12 +152,16 @@ translation state while covering the same Chinese labels.
   checkpoint/recovery, package overlays, and constrained dshmarket compatibility.
 - Adapted Profile checkpoint permissions for Windows without weakening file
   type, symlink, size, hash, or fail-closed recovery checks.
+- Merged fork PR #21 at `3c42c73646` after all five CI jobs passed. Settings now
+  show the installed Desktop version, check the fixed official stable GitHub
+  Release, and hand only the freshly verified exact version to the existing
+  confirmation-gated Windows or macOS download and install flow.
+- Kept the update trust boundary narrow: draft, prerelease, malformed, stale,
+  renderer-supplied, ModelScope, and mutable-mirror candidates are rejected;
+  exact byte counts and PE/DMG formats remain validated before installation.
 
 ### In progress
 
-- Add a Desktop settings update surface that checks the fixed official GitHub
-  Releases API and hands only a freshly verified exact version to the existing
-  confirmation-gated native installer flow.
 - Keep this ledger synchronized as high-impact Issues and pull requests are
   audited or implemented.
 
